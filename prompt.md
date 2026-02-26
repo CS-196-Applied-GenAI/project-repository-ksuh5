@@ -1,229 +1,116 @@
-# TDD Code-Generation Prompts (Python/FastAPI Backend)
+# TDD Code-Generation Prompts (Python Backend) — Local-Only Running Planner v1
 
-Use these prompts **in order** with a code-generation LLM. Each prompt is designed to be:
-- **small, incremental, test-driven**
-- **integrated** (no orphaned modules)
-- **safe to merge** (tests + wiring each step)
-- **beginner-friendly** (clear acceptance checks)
+Use these prompts **in order** with your code-generation LLM. Each prompt is designed to:
+- be **small and safe**
+- be **test-driven** (tests first, then implementation)
+- avoid orphaned code (everything wired into the running FastAPI app or test suite)
+- keep complexity low while still making forward progress
 
-Assumptions:
-- Backend uses **FastAPI**, **SQLAlchemy**, **Alembic**, **Pytest**.
-- The step-by-step plan is in `plan.md` (Steps 0–8).
-- If you’re using Docker/Compose for Postgres, you can add it later (Step 8); early steps can use SQLite for tests *or* a dedicated test Postgres.
-
-> Instruction for the code-gen LLM in every step: **Do not implement future steps early.** Only implement what this prompt asks. Keep diffs minimal and ensure all tests pass.
+Assumptions for the LLM:
+- Repository already contains `plan.md`.
+- You will create a Python backend under a top-level folder (e.g., `backend/`).
+- Use FastAPI + pytest.
+- Prefer simple, explicit code over clever abstractions.
 
 ---
 
-## Prompt 0.1 — Create minimal FastAPI app + /health + first test
+## Prompt 01 — Create backend skeleton + tooling + first failing test
 
 ```text
-You are implementing Step 0.1 from plan.md.
+You are implementing the backend described in plan.md.
 
-Goal: Create a minimal FastAPI application with a GET /health endpoint that returns JSON { "status": "ok" } and a passing pytest test.
+Task: Create the initial Python backend project skeleton using FastAPI and pytest, with the smallest possible running surface area.
 
 Requirements:
-1) Create a Python project structure that matches plan.md at a minimal level:
-   - app/main.py (FastAPI instance + router wiring)
-   - app/api/routers/health.py (health endpoint)
-   - app/tests/test_health.py
-2) Add pytest configuration if needed (pyproject.toml or requirements.txt is fine; keep it minimal).
-3) Test-driven approach:
-   - Write the failing test first (test expects 200 + JSON).
-   - Implement endpoint to make it pass.
-4) Use FastAPI's TestClient (from fastapi.testclient) for the test.
-5) Ensure the app is runnable (e.g., uvicorn app.main:app).
-6) Wire the router into the app so the endpoint is live (no orphan router).
+1) Create a new folder `backend/` with:
+   - `backend/app/main.py` (FastAPI app instance)
+   - `backend/app/__init__.py`
+   - `backend/tests/test_health.py`
+   - `backend/pyproject.toml` (use uv or poetry-style dependencies, but keep it minimal)
+   - `backend/README.md` with exact run/test commands
 
-Acceptance:
-- `pytest` passes.
-- `GET /health` returns 200 and exact JSON {"status":"ok"}.
+2) Test-driven:
+   - Write `backend/tests/test_health.py` FIRST with a failing test that calls GET `/health` and expects:
+     - status_code == 200
+     - JSON has keys: `status` == "ok" and `version` is a non-empty string
 
-After changes, output:
-- A brief list of files changed/added and why.
-- Any commands to run tests locally.
+3) Implement the minimal `/health` endpoint in `backend/app/main.py` to make the test pass.
+
+4) Use FastAPI TestClient for integration tests.
+5) Keep code extremely small and readable.
+
+Deliverables:
+- All new files created
+- Tests pass with `pytest`
+
+Do NOT add any extra endpoints or models yet. Wire everything so running `pytest` from inside `backend/` works.
 ```
 
 ---
 
-## Prompt 0.2 — Add config module (env-driven) + keep app working
+## Prompt 02 — Add WorkoutType enum model + validation tests
 
 ```text
-Implement Step 0.2 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add a simple configuration system that reads environment variables, without breaking existing /health functionality.
+Goal: Introduce the WorkoutType enum in a strict, validated way, with tests first, without changing endpoint behavior (yet).
 
-Requirements:
-1) Create app/core/config.py using Pydantic Settings (pydantic-settings) OR a tiny manual env reader.
-   - Must support at least: DATABASE_URL (optional for now), JWT_SECRET (optional for now), ENV (dev/test).
-   - Provide safe defaults for dev/test.
-2) Update app/main.py to load config (but do NOT connect to the DB yet).
-3) Add a small test that proves the config object can be imported and has defaults.
-4) Keep /health endpoint and existing tests passing.
+Steps (TDD):
+1) Add `backend/app/models.py` containing:
+   - a `WorkoutType` enum with exact string values:
+     "easy run", "long run", "tempo", "intervals", "recover", "rest day", "cross-training"
+   - Use Pydantic-friendly patterns (e.g., `enum.StrEnum` if available, or `str, Enum`).
 
-Acceptance:
-- All tests pass.
-- No new runtime dependencies beyond what you use (add to requirements/pyproject).
+2) Add a small Pydantic model in `models.py` ONLY for testing validation, e.g.:
+   - `WorkoutTypeHolder` with one field `type: WorkoutType`
 
-After changes, output:
-- Files changed
-- How to set ENV vars for local runs (brief)
-```
+3) Write unit tests first in `backend/tests/test_models_workout_type.py`:
+   - Valid strings parse successfully (parameterized).
+   - An invalid string (e.g., "junk") fails validation.
 
----
-
-## Prompt 1.1 — Add SQLAlchemy engine/session + dependency (no models yet)
-
-```text
-Implement Step 1.1 from plan.md.
-
-Goal: Add SQLAlchemy engine + SessionLocal + a FastAPI dependency that yields a DB session per request, without adding models yet.
-
-Requirements:
-1) Add app/db/session.py:
-   - create_engine using config.DATABASE_URL
-   - SessionLocal = sessionmaker(...)
-   - get_db() dependency that yields a session and closes it safely
-2) Add app/db/base.py with a Base = declarative_base() (or SQLAlchemy 2.0 DeclarativeBase).
-3) Ensure app/main.py still runs and /health still works.
-4) Testing:
-   - Add a test that imports get_db and can create/close a session in a controlled way.
-   - If DATABASE_URL is not set, tests should still work. You may set DATABASE_URL to sqlite:///./test.db or sqlite+pysqlite:///:memory: for tests only.
-5) Keep things simple: no Alembic yet.
+4) Ensure imports are clean and nothing is unused.
+5) Do not add new endpoints.
 
 Acceptance:
 - All tests pass.
-- Session dependency exists and is importable.
-
-After changes, include:
-- Any notes about how tests choose a DB URL.
+- No orphaned code: models are imported by tests and are in `app/`.
 ```
 
 ---
 
-## Prompt 1.2 — Add Alembic baseline migration wiring
+## Prompt 03 — Add minimal planning models (Race + PlannedWorkout) + tests for parsing
 
 ```text
-Implement Step 1.2 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add Alembic to the project and create a baseline migration setup. No tables required yet.
+Goal: Add minimal Pydantic models needed for planning and later endpoints, with tests first.
 
-Requirements:
-1) Add alembic.ini and alembic/ directory with env.py configured to use app.core.config settings.
-2) Ensure Alembic can run in principle:
-   - Document command to create a migration and upgrade (do not require user to actually run in CI yet unless easy).
-3) Do not introduce models or migrations that create tables yet.
-4) Tests:
-   - Add a lightweight test that imports Alembic env configuration modules (or at least verifies alembic package is installed).
-   - Keep tests robust and not dependent on an external database if possible.
+TDD steps:
+1) In `backend/app/models.py`, add:
+   - `RaceStatus` enum: "Active", "Completed", "Archived"
+   - `Race` model with: id (uuid string), name (string), date (YYYY-MM-DD string), status (RaceStatus)
+   - `PlannedWorkout` model with the fields from plan.md that are necessary for recalculation rules:
+     - id (uuid string)
+     - date (YYYY-MM-DD string)
+     - type (WorkoutType)
+     - locked (bool)
+     - target_distance_km (float | None)
+     - target_duration_min (int | None)
+     - target_pace_min_per_km_low (float | None)
+     - target_pace_min_per_km_high (float | None)
+     - structure_text (str | None)
+     - race_id (uuid string)
+     - route_id (uuid string | None)
 
-Acceptance:
-- Existing endpoint tests still pass.
-- Alembic config exists and points to the configured DB URL.
+2) Tests first in `backend/tests/test_models_planned_workout.py`:
+   - Valid PlannedWorkout parses from dict.
+   - Invalid workout type fails.
+   - locked must be boolean (reject a nonsense type).
+   - date must be parseable as a date-like string OR use pydantic date type (choose one and test it).
 
-After changes:
-- Provide commands:
-  - alembic revision --autogenerate -m "..."
-  - alembic upgrade head
-```
-
----
-
-## Prompt 2.1 — Implement User model + migration + DB-level uniqueness
-
-```text
-Implement Step 2.1 from plan.md.
-
-Goal: Add a User model, create an Alembic migration for it, and add tests for basic persistence and uniqueness.
-
-Requirements:
-1) Create app/db/models/user.py defining User with:
-   - id (UUID primary key; use uuid4)
-   - email (unique, indexed, non-null)
-   - password_hash (non-null)
-   - created_at (timestamp default now)
-2) Update app/db/models/__init__.py and app/db/base.py imports so Alembic autogenerate can see metadata.
-3) Create an Alembic migration that creates the users table.
-4) Testing:
-   - Add pytest fixtures to create a temporary database and apply migrations (choose the simplest workable approach).
-   - Add tests:
-     a) can insert a user and retrieve it
-     b) inserting duplicate email raises an integrity error (or results in a controlled failure)
-5) Keep /health tests passing.
-
-Acceptance:
-- All tests pass.
-- Migration exists and is applied in tests.
-
-After changes:
-- Explain briefly how migrations are run in the test setup.
-```
-
----
-
-## Prompt 2.2 — Add User Pydantic schema (no password leaks)
-
-```text
-Implement Step 2.2 from plan.md.
-
-Goal: Add Pydantic schemas for User to ensure responses never leak password_hash.
-
-Requirements:
-1) Create app/schemas/user.py:
-   - UserRead schema: id, email, created_at
-   - (Optional) UserCreate schema: email, password
-2) Add a unit test that confirms password_hash is not present in UserRead serialization.
-3) Do not add auth endpoints yet; just schemas + tests.
-4) Keep all existing tests passing.
-
-Acceptance:
-- Tests pass and schemas are integrated (importable, used where relevant).
-```
-
----
-
-## Prompt 3.1 — Password hashing utilities + unit tests
-
-```text
-Implement Step 3.1 from plan.md.
-
-Goal: Add password hashing utilities using passlib[bcrypt] (recommended) and test them.
-
-Requirements:
-1) Create app/core/security.py with:
-   - hash_password(plain: str) -> str
-   - verify_password(plain: str, hashed: str) -> bool
-2) Add unit tests:
-   - correct password verifies true
-   - wrong password verifies false
-   - hash output is not equal to input
-3) No API changes yet (no new endpoints).
-4) Keep existing tests passing.
-
-Acceptance:
-- All tests pass.
-```
-
----
-
-## Prompt 3.2 — JWT utilities + unit tests
-
-```text
-Implement Step 3.2 from plan.md.
-
-Goal: Add JWT creation and validation helpers and test them.
-
-Requirements:
-1) In app/core/security.py (or a new module if cleaner), add:
-   - create_access_token(subject: str, expires_minutes: int | None = None) -> str
-   - decode_access_token(token: str) -> dict (or a structured object)
-2) Token must include:
-   - sub = user_id (string)
-   - exp (expiry) if configured
-3) Use config.JWT_SECRET and config.JWT_ALGORITHM (default HS256).
-4) Tests:
-   - token decodes and includes sub
-   - expired token is rejected (if you implement expiry; otherwise add a simple invalid token test)
+Constraints:
+- Keep models simple (Pydantic BaseModel).
+- Prefer using `datetime.date` fields if that simplifies comparisons later; if you do, update tests accordingly.
 
 Acceptance:
 - All tests pass.
@@ -232,467 +119,395 @@ Acceptance:
 
 ---
 
-## Prompt 4.1 — Implement POST /auth/register with tests
+## Prompt 04 — Planning engine stub (pure function) + failing rule tests
 
 ```text
-Implement Step 4.1 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add POST /auth/register to create a user with hashed password.
+Goal: Create the pure planning recalculation function (initially stub), and write failing tests for the core spec constraints:
+- only future workouts change (date > today)
+- locked workouts never change
+- if race is not Active, nothing changes
 
-Requirements:
-1) Create app/api/routers/auth.py and wire it in app/main.py.
-2) Endpoint: POST /auth/register
-   - Request body: email, password
-   - Validate email format (Pydantic EmailStr)
-   - Hash password
-   - Store user in DB
-   - Return UserRead (id, email, created_at)
-   - Reject duplicate email with a 400 (or 409) and clear error message
-3) Testing (TDD):
-   - test successful register
-   - test duplicate register fails
-4) Ensure database session dependency is used.
-5) Keep /health endpoint working.
+TDD steps:
+1) Create `backend/app/planning.py` with function signature:
+   `recalculate_plan(today: date, planned_workouts: list[PlannedWorkout], race_status: RaceStatus) -> list[PlannedWorkout]`
+
+2) Initially implement it as a stub that returns the input unchanged.
+
+3) Write tests FIRST in `backend/tests/test_planning_recalculate_rules.py` that will FAIL with the stub:
+   - Setup planned workouts on: past, today, future.
+   - Mark one future workout locked=True.
+   - Call recalculate_plan with race_status Active.
+   - Assert:
+     - past workout unchanged
+     - today's workout unchanged
+     - locked future workout unchanged
+     - at least one unlocked future workout is modified in some detectable way (e.g., target_distance_km gets defaulted from None to a value)
+   - Another test: race_status Completed -> returned list equals original list (deep equality)
+
+Notes:
+- You may need a deterministic “defaulting” behavior to detect a change; for now require that if an unlocked future workout has all targets None, it gains a default target_distance_km.
+- Keep the tests readable and deterministic.
 
 Acceptance:
-- Tests pass.
-- Router is wired; no orphan code.
+- Tests fail before implementation changes (red).
+- After stub exists, proceed to next prompt to implement logic.
 ```
 
 ---
 
-## Prompt 4.2 — Implement POST /auth/login with tests (returns JWT)
+## Prompt 05 — Implement future-only + locked + active-only rules to satisfy tests
 
 ```text
-Implement Step 4.2 from plan.md.
+Continue from the previous prompt where tests are failing.
 
-Goal: Add POST /auth/login to authenticate and return an access token.
+Goal: Implement the minimum logic in `recalculate_plan` to pass the rule tests, without adding complexity.
 
-Requirements:
-1) Endpoint: POST /auth/login
-   - Request body: email, password
-   - Verify user exists and password matches
-   - Return JSON: { "access_token": "...", "token_type": "bearer" }
-2) Tests:
-   - login success returns bearer token
-   - wrong password returns 401
-   - non-existent user returns 401
-3) Keep register tests passing.
+Implementation requirements:
+1) If race_status != RaceStatus.Active: return planned_workouts unchanged (but be careful about copying vs identity; make tests pass consistently).
+2) For each PlannedWorkout:
+   - If workout.date <= today: do not change.
+   - If workout.locked is True: do not change.
+   - Else if date > today and unlocked: apply deterministic defaults ONLY when targets are missing:
+     - If type == "rest day": set target_distance_km and target_duration_min to None (leave as None).
+     - Else: if target_distance_km is None, set to a small default (e.g., 5.0).
+     - Keep other fields unchanged unless needed by tests.
+
+3) Keep function pure:
+   - Do not mutate input objects in-place unless you are sure tests expect that. Prefer returning new PlannedWorkout copies for modified ones.
+
+4) Add any small helper functions if it improves clarity, but keep it minimal.
 
 Acceptance:
-- All tests pass.
-- Tokens decode to the right subject if tested.
+- All existing tests pass.
+- No endpoints added yet.
 ```
 
 ---
 
-## Prompt 4.3 — Add get_current_user dependency + GET /me + tests
+## Prompt 06 — Add POST /plan/recalculate endpoint + integration tests
 
 ```text
-Implement Step 4.3 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add authentication dependency that reads Authorization: Bearer <token> and provides the current user. Add GET /me as a protected endpoint.
+Goal: Wire the planning function into the FastAPI app with a real endpoint and integration tests.
 
-Requirements:
-1) Add app/api/deps.py:
-   - oauth2 scheme (OAuth2PasswordBearer is okay)
-   - get_current_user(db=Depends(get_db), token=Depends(oauth2_scheme))
-   - Decode token, get user by id, raise 401 if invalid/missing
-2) Add router endpoint GET /me (can be in auth router):
-   - Returns UserRead for the authenticated user
-3) Tests:
-   - GET /me without token -> 401
-   - GET /me with valid token -> 200 and correct user
-4) Keep existing tests passing.
+TDD steps:
+1) Define request/response models in `backend/app/models.py`:
+   - `PlanRecalculateRequest` with:
+     - today (date)
+     - race_status (RaceStatus) OR active_race.status (pick one, but keep it minimal)
+     - current_planned_workouts: list[PlannedWorkout]
+   - `PlanRecalculateResponse` with:
+     - updated_planned_workouts: list[PlannedWorkout]
+
+2) Write integration test FIRST in `backend/tests/test_plan_recalculate_endpoint.py`:
+   - Call POST `/plan/recalculate` with:
+     - today
+     - race_status Active
+     - planned workouts (include one unlocked future workout with target_distance_km None)
+   - Expect 200 and response includes updated_planned_workouts with that workout defaulted.
+
+3) Implement endpoint in `backend/app/main.py`:
+   - import models + recalculate_plan
+   - validate input using Pydantic
+   - return response model
+
+Constraints:
+- Keep endpoint synchronous (normal def), unless you need async.
+- Do not add persistence.
+- Ensure `/health` still works and tests still pass.
 
 Acceptance:
-- All tests pass.
-- Dependency is used by /me.
+- All tests pass including integration tests.
+- Endpoint is wired to the planning engine (no orphan logic).
 ```
 
 ---
 
-## Prompt 5.1 — Add Route model + migration + minimal DB test
+## Prompt 07 — CSV export helpers (planned workouts + logs) + unit tests
 
 ```text
-Implement Step 5.1 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add Route model and migration.
+Goal: Add deterministic CSV export functions with unit tests first. Keep it pure and simple.
 
-Requirements:
-1) Create app/db/models/route.py with fields:
-   - id UUID pk
-   - user_id FK -> users.id (on delete cascade optional)
-   - name (non-null)
-   - notes (nullable)
-   - polyline_points (JSON) storing list of {lat, lng}
-   - distance_meters (nullable int)
-   - created_at, updated_at
-2) Add relationship to User if helpful.
-3) Create Alembic migration for routes table.
-4) Tests:
-   - basic insert route for a user works.
+TDD steps:
+1) In `backend/app/models.py`, add `WorkoutLog` model (minimal fields from plan.md needed for CSV):
+   - id (uuid string)
+   - date (date)
+   - type (WorkoutType)
+   - actual_distance_km (float | None)
+   - actual_duration_min (int | None)
+   - notes (str | None)
+   - linked_planned_workout_id (uuid string | None)
 
-Acceptance:
-- All tests pass.
-- Alembic sees the new model.
-```
+2) Create `backend/app/csv_io.py` with:
+   - constants for column order:
+     - PLANNED_WORKOUT_COLUMNS
+     - WORKOUT_LOG_COLUMNS
+   - `export_planned_workouts_csv(planned_workouts: list[PlannedWorkout]) -> str`
+   - `export_workout_logs_csv(logs: list[WorkoutLog]) -> str`
+   - Use Python's `csv` module with `StringIO`.
 
----
+3) Write unit tests FIRST in `backend/tests/test_csv_export.py`:
+   - Export includes header row with exact column order.
+   - Export is stable/deterministic.
+   - Fields with commas/newlines in structure_text/notes are properly quoted.
 
-## Prompt 5.2 — POST /routes with tests
-
-```text
-Implement Step 5.2 from plan.md.
-
-Goal: Create an authenticated endpoint to create a route.
-
-Requirements:
-1) Add app/schemas/route.py:
-   - RouteCreate (name, notes?, polyline_points, distance_meters?)
-   - RouteRead (id, name, notes, polyline_points, distance_meters, created_at, updated_at)
-2) Add app/api/routers/routes.py and wire into app/main.py.
-3) POST /routes:
-   - Requires auth (Depends(get_current_user))
-   - Creates route for current user
-   - Returns RouteRead
-4) Tests:
-   - unauth request -> 401
-   - auth request -> 200 + returns created route
-5) Keep changes minimal and integrated.
-
-Acceptance:
-- Tests pass.
-- Router wired.
-```
-
----
-
-## Prompt 5.3 — GET /routes list (only mine) + tests
-
-```text
-Implement Step 5.3 from plan.md.
-
-Goal: Add list endpoint for routes scoped to the current user.
-
-Requirements:
-1) GET /routes:
-   - Requires auth
-   - Returns list of RouteRead for current user
-2) Tests:
-   - Create two users, create routes for each
-   - Listing as user A returns only A's routes
+Implementation notes:
+- Decide how to serialize None (empty string is fine); test it.
+- Use ISO date strings.
 
 Acceptance:
 - All tests pass.
+- No endpoints yet.
 ```
 
 ---
 
-## Prompt 5.4 — GET /routes/{id} with ownership enforcement + tests
+## Prompt 08 — Add POST /csv/export endpoint + integration test
 
 ```text
-Implement Step 5.4 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add route detail endpoint with correct permission behavior.
+Goal: Wire CSV export helpers into a FastAPI endpoint, with integration test first.
 
-Requirements:
-1) GET /routes/{route_id}:
-   - Requires auth
-   - If route doesn't exist -> 404
-   - If route exists but belongs to another user -> 403 (or 404, but pick one and be consistent)
-2) Tests for:
-   - can fetch own route
-   - cannot fetch others' route
-   - missing id returns 404
+TDD steps:
+1) Add request/response models in `backend/app/models.py`:
+   - `CsvExportRequest` with:
+     - planned_workouts: list[PlannedWorkout]
+     - workout_logs: list[WorkoutLog]
+   - `CsvExportResponse` with:
+     - planned_workouts_csv: str
+     - workout_logs_csv: str
+
+2) Write integration test FIRST in `backend/tests/test_csv_export_endpoint.py`:
+   - POST `/csv/export` with 1 planned workout + 1 log
+   - Expect 200 and both CSV strings contain headers and at least one data row.
+
+3) Implement POST `/csv/export` in `backend/app/main.py` calling the export helpers.
+
+Constraints:
+- Keep response as JSON containing CSV strings.
+- Do not zip files yet.
 
 Acceptance:
-- Tests pass.
+- All tests pass.
+- Endpoint uses helper functions (wired, no orphan code).
 ```
 
 ---
 
-## Prompt 5.5 — PUT /routes/{id} update + tests
+## Prompt 09 — CSV import parser with row-level errors + unit tests
 
 ```text
-Implement Step 5.5 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add update endpoint for routes.
+Goal: Add CSV import with partial success and row-level errors, with unit tests first.
 
-Requirements:
-1) Add RouteUpdate schema (all optional fields you want to allow).
-2) PUT /routes/{route_id}:
-   - Requires auth
-   - Ownership enforcement
-   - Updates fields and updated_at
-3) Tests:
-   - update own route works
-   - cannot update others
+Design:
+- For each CSV, return:
+  - `items`: parsed models
+  - `errors`: list of {row_number, message}
+
+TDD steps:
+1) In `backend/app/models.py`, add error/result models:
+   - `CsvRowError`: row_number (int), message (str)
+   - `CsvImportResultPlannedWorkouts`: items (list[PlannedWorkout]), errors (list[CsvRowError])
+   - `CsvImportResultWorkoutLogs`: items (list[WorkoutLog]), errors (list[CsvRowError])
+
+2) In `backend/app/csv_io.py`, implement:
+   - `import_planned_workouts_csv(csv_text: str) -> CsvImportResultPlannedWorkouts`
+   - `import_workout_logs_csv(csv_text: str) -> CsvImportResultWorkoutLogs`
+   - Use `csv.DictReader`.
+   - Row numbers should align with human expectation (header is row 1, first data row is row 2).
+
+3) Tests FIRST in `backend/tests/test_csv_import.py`:
+   - A CSV with one valid row imports 1 item, 0 errors.
+   - A CSV with one invalid row (bad workout type) yields 0 items, 1 error with correct row_number.
+   - A mixed CSV yields partial items and errors.
+
+Constraints:
+- Do not crash on errors; accumulate them.
+- Keep conversions minimal and explicit.
 
 Acceptance:
-- Tests pass.
+- All tests pass.
+- No endpoint yet.
 ```
 
 ---
 
-## Prompt 5.6 — DELETE /routes/{id} + tests
+## Prompt 10 — Add POST /csv/import endpoint + integration test
 
 ```text
-Implement Step 5.6 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add delete endpoint for routes.
+Goal: Wire CSV import functions into an endpoint with integration tests.
 
-Requirements:
-1) DELETE /routes/{route_id}:
-   - Requires auth
-   - Ownership enforcement
-   - Returns 204 No Content
-2) Tests:
-   - delete own route works
-   - cannot delete others
-   - deleted route is gone
+TDD steps:
+1) Add request/response models in `backend/app/models.py`:
+   - `CsvImportRequest`: planned_workouts_csv (str), workout_logs_csv (str)
+   - `CsvImportResponse`: planned_workouts (CsvImportResultPlannedWorkouts), workout_logs (CsvImportResultWorkoutLogs)
+
+2) Write integration test FIRST in `backend/tests/test_csv_import_endpoint.py`:
+   - Provide simple planned_workouts_csv and workout_logs_csv (with headers + one row each)
+   - Expect 200 and parsed items lengths match.
+
+3) Implement POST `/csv/import` in `backend/app/main.py`.
 
 Acceptance:
-- Tests pass.
+- All tests pass.
+- Endpoint is wired to import helpers (no orphan code).
 ```
 
 ---
 
-## Prompt 6.1 — Add Workout model + migration + minimal DB test
+## Prompt 11 — OSRM client wrapper + validation tests (no external dependency required)
 
 ```text
-Implement Step 6.1 from plan.md.
+Build on the existing backend/ code.
 
-Goal: Add Workout model and migration.
+Goal: Add the route snap endpoint incrementally. Start with input validation + a client wrapper that can be mocked in tests, so tests do not require OSRM running.
 
-Requirements:
-1) Create app/db/models/workout.py with:
-   - id UUID pk
-   - user_id FK -> users.id
-   - name non-null
-   - type enum (easy/tempo/intervals/long_run/strength/other) or string with validation
-   - description text nullable
-   - target_duration_minutes nullable int
-   - target_distance_meters nullable int
-   - created_at, updated_at
-2) Migration for workouts table.
-3) Tests:
-   - can insert a workout for a user
+TDD steps:
+1) In `backend/app/models.py`, add:
+   - `LatLng` model: lat (float), lng (float)
+   - `RouteSnapRequest`: waypoints (list[LatLng])
+   - `RouteSnapResponse`:
+     - distance_km (float)
+     - geometry (GeoJSON-like dict) OR a typed model; keep it simple as dict
+     - start (LatLng)
+     - end (LatLng)
+
+2) Add `backend/app/osrm_client.py` with:
+   - `class OsrmClient` initialized with base_url
+   - method `route(waypoints: list[LatLng]) -> RouteSnapResponse` (or raw parsed dict)
+   - For now, you can raise NotImplementedError in the method.
+
+3) Write tests FIRST in `backend/tests/test_routes_snap_validation.py` for the endpoint validation behavior:
+   - If waypoints length < 2, endpoint returns 422 (pydantic validation) OR 400 with explicit message (choose one and test it).
+   - Ensure route_id etc not involved.
+
+4) Add POST `/routes/snap` endpoint skeleton in `backend/app/main.py` that:
+   - validates request
+   - (for now) returns 503 "OSRM not configured" or similar, until client is implemented in next prompt
 
 Acceptance:
-- Tests pass.
+- Tests pass for validation and error behavior without needing OSRM.
+- Endpoint exists and is wired, even if it returns 503 for now.
 ```
 
 ---
 
-## Prompt 6.2 — Workouts CRUD endpoints mirroring Routes + tests
+## Prompt 12 — Implement OSRM call with httpx + mock-based tests + real wiring
 
 ```text
-Implement Step 6.2 from plan.md.
+Continue from the previous prompt where /routes/snap exists but returns 503.
 
-Goal: Add workouts router with full CRUD, following the same patterns as routes.
+Goal: Implement actual OSRM integration in a way that is testable without OSRM by mocking HTTP calls.
 
-Requirements:
-1) Add app/schemas/workout.py: WorkoutCreate, WorkoutRead, WorkoutUpdate.
-2) Add app/api/routers/workouts.py and wire into app/main.py.
-3) Implement:
-   - POST /workouts
-   - GET /workouts
-   - GET /workouts/{id}
-   - PUT /workouts/{id}
-   - DELETE /workouts/{id}
-4) Tests:
-   - unauth rejected
-   - ownership enforced
-   - happy path for create/list/get/update/delete
+TDD steps:
+1) Implement OsrmClient.route using httpx:
+   - Build OSRM route URL: /route/v1/driving/{lng,lat;lng,lat...}?geometries=geojson&overview=full
+   - Parse response:
+     - total distance meters -> distance_km
+     - geometry -> GeoJSON LineString dict
+     - start/end from first/last waypoint
+   - Handle non-200 responses with a clear exception.
+
+2) Update `/routes/snap` endpoint to:
+   - create OsrmClient with env var `OSRM_BASE_URL` defaulting to http://localhost:5000
+   - call client.route
+   - return RouteSnapResponse
+   - if OSRM request fails (connection error), return 503 with helpful message.
+
+3) Write tests FIRST in `backend/tests/test_routes_snap_endpoint.py`:
+   - Mock httpx to return a sample OSRM JSON response
+   - Assert endpoint returns 200 and correct distance_km and geometry shape
+   - Also test connection error -> 503
+
+Constraints:
+- Keep GeoJSON format simple:
+  { "type": "LineString", "coordinates": [[lng,lat], ...] }
+- Do not add persistence.
 
 Acceptance:
-- Tests pass and endpoints are wired.
+- All tests pass.
+- Endpoint is fully wired to client implementation.
 ```
 
 ---
 
-## Prompt 7.1 — Add CalendarEvent model + migration + minimal DB test
+## Prompt 13 (Optional) — SQLite snapshot save/load with roundtrip tests
 
 ```text
-Implement Step 7.1 from plan.md.
+Only do this prompt if you want optional persistence per plan.md.
 
-Goal: Add CalendarEvent model and migration.
+Goal: Add a minimal snapshot store that saves the entire state as JSON in SQLite. Keep it one-record (single profile) and simple.
 
-Requirements:
-1) Create app/db/models/calendar_event.py with:
-   - id UUID pk
-   - user_id FK -> users.id
-   - date (DATE) non-null
-   - title non-null
-   - event_type (run/workout/rest/race/other) as enum or constrained string
-   - route_id nullable FK -> routes.id
-   - workout_id nullable FK -> workouts.id
-   - notes nullable
-   - status (planned/completed/skipped) default planned
-   - created_at, updated_at
-2) Migration for calendar_events table.
-3) Tests:
-   - can insert an event
+TDD steps:
+1) Create `backend/app/state_store.py`:
+   - sqlite initialization (create table if not exists)
+   - `save_snapshot(snapshot_json: str) -> None`
+   - `load_snapshot() -> str | None`
+
+2) Add models in `backend/app/models.py`:
+   - `StateSnapshot` (a dict-like model or structured model containing races/workouts/logs/routes)
+   - `StateSaveRequest`, `StateLoadResponse`
+
+3) Tests FIRST in `backend/tests/test_state_store.py`:
+   - save then load returns same JSON string
+
+4) Add endpoints:
+   - POST `/state/save`
+   - GET `/state/load`
+
+Constraints:
+- Use a file `backend/.local/state.db` (ensure folder exists).
+- Keep it single-profile: always overwrite the latest snapshot.
 
 Acceptance:
-- Tests pass.
+- All tests pass.
+- Endpoints wired to state_store.
 ```
 
 ---
 
-## Prompt 7.2 — POST /calendar/events with ownership validation + tests
+## Prompt 14 — Final wiring pass + docs + “no orphan code” audit
 
 ```text
-Implement Step 7.2 from plan.md.
+Goal: Perform a final wiring and cleanup pass so everything is cohesive and beginner-friendly.
 
-Goal: Create an authenticated endpoint to create calendar events and validate referenced route/workout ownership.
+Tasks:
+1) Ensure `backend/app/main.py` includes all endpoints:
+   - GET /health
+   - POST /plan/recalculate
+   - POST /csv/export
+   - POST /csv/import
+   - POST /routes/snap
+   - (optional) /state/save and /state/load
 
-Requirements:
-1) Add app/schemas/calendar_event.py:
-   - CalendarEventCreate (date, title, event_type, route_id?, workout_id?, notes?, status?)
-   - CalendarEventRead
-   - CalendarEventUpdate
-2) Add app/api/routers/calendar.py wired into app/main.py.
-3) POST /calendar/events:
-   - Requires auth
-   - If route_id provided: ensure route exists and belongs to user
-   - If workout_id provided: ensure workout exists and belongs to user
-   - Create event
-4) Tests:
-   - create event with no references works
-   - create event referencing own route/workout works
-   - referencing another user's route/workout fails (403/404 consistent with your policy)
+2) Ensure all modules are imported and used (no dead code):
+   - models.py used by endpoints + tests
+   - planning.py used by /plan/recalculate
+   - csv_io.py used by csv endpoints
+   - osrm_client.py used by /routes/snap
+
+3) Update `backend/README.md`:
+   - how to run uvicorn
+   - how to run tests
+   - how to set OSRM_BASE_URL
+   - explain that backend is local-only helper
+
+4) Run through tests mentally and fix any flakiness or brittle assumptions.
 
 Acceptance:
-- Tests pass and router wired.
+- All tests pass.
+- No unused files.
+- Clear run instructions.
 ```
 
 ---
-
-## Prompt 7.3 — GET /calendar/events date-range query + tests
-
-```text
-Implement Step 7.3 from plan.md.
-
-Goal: Add endpoint to fetch calendar events in an inclusive date range.
-
-Requirements:
-1) GET /calendar/events?start=YYYY-MM-DD&end=YYYY-MM-DD
-   - Requires auth
-   - Validates start <= end
-   - Returns events for current user with date between start and end inclusive
-2) Tests:
-   - returns only items in range
-   - returns only current user's items
-   - invalid range returns 422 or 400 with a clear error
-
-Acceptance:
-- Tests pass.
-```
-
----
-
-## Prompt 7.4 — Calendar event GET/PUT/DELETE + tests
-
-```text
-Implement Step 7.4 from plan.md.
-
-Goal: Complete CRUD for calendar events.
-
-Requirements:
-1) Implement:
-   - GET /calendar/events/{id}
-   - PUT /calendar/events/{id}
-   - DELETE /calendar/events/{id} -> 204
-2) Ownership enforcement for all.
-3) Tests:
-   - get/update/delete own event works
-   - cannot access others
-   - missing id returns 404
-
-Acceptance:
-- Tests pass.
-```
-
----
-
-## Prompt 8.1 — Pagination (limit/offset) for list endpoints + tests
-
-```text
-Implement Step 8.1 from plan.md.
-
-Goal: Add simple pagination to list endpoints:
-- GET /routes
-- GET /workouts
-- GET /calendar/events (date range endpoint may also accept pagination)
-
-Requirements:
-1) Add optional query params: limit (default 50, max 200) and offset (default 0).
-2) Apply ordering consistently (e.g., created_at desc or date asc for calendar range).
-3) Tests:
-   - create multiple items and verify limit/offset slices correctly.
-
-Acceptance:
-- Tests pass.
-- Backwards compatible defaults.
-```
-
----
-
-## Prompt 8.2 — Consistent error handling (401/403/404) + tests
-
-```text
-Implement Step 8.2 from plan.md.
-
-Goal: Make error behavior consistent across resources and add tests to lock it down.
-
-Requirements:
-1) Pick a policy and apply consistently:
-   - 401: missing/invalid token
-   - 404: resource not found (and optionally also when it exists but belongs to another user to avoid leaking)
-   - OR 403 for forbidden access (be consistent everywhere)
-2) Refactor duplicated ownership checks into helper functions in services/ or router utilities.
-3) Tests:
-   - Ensure at least one endpoint per resource confirms the chosen policy (routes/workouts/events).
-
-Acceptance:
-- Tests pass and behavior is consistent across endpoints.
-```
-
----
-
-## Prompt 8.3 — Final wiring & documentation pass (no new features)
-
-```text
-Implement Step 8.3 from plan.md.
-
-Goal: Ensure everything is wired together cleanly and the developer experience is straightforward.
-
-Requirements:
-1) Add OpenAPI tags and short descriptions for routers.
-2) Add a minimal README.md with:
-   - setup
-   - env vars
-   - run server
-   - run tests
-   - run migrations
-3) Make sure imports, router registration, and directory structure are consistent.
-4) Do not introduce new functionality beyond documentation and minor wiring cleanup.
-5) All tests must pass.
-
-Acceptance:
-- Tests pass.
-- A new developer can run the server and tests by following README.
-```
-
----
-## Optional prompts (only if needed)
-
-### Optional — Docker Compose for Postgres (Ops)
-```text
-Add docker-compose.yml for a local Postgres, plus instructions in README.
-Do not change application logic beyond DATABASE_URL examples.
-Add no tests unless you already have integration tests requiring Postgres.
-Keep all existing tests passing.
-```
