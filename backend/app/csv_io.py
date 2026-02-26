@@ -92,6 +92,59 @@ def export_workout_logs_csv(logs: list[WorkoutLog]) -> str:
     return buf.getvalue()
 
 
+# def import_planned_workouts_csv(csv_text: str) -> CsvImportResultPlannedWorkouts:
+#     buf = StringIO(csv_text)
+#     reader = csv.DictReader(buf)
+
+#     items: list[PlannedWorkout] = []
+#     errors: list[CsvRowError] = []
+
+#     # DictReader line_num is the current line in the CSV (1-based, header is 1).
+#     for row in reader:
+#         row_number = reader.line_num
+#         try:
+#             items.append(PlannedWorkout.model_validate(row))
+#         except ValidationError as e:
+#             errors.append(CsvRowError(row_number=row_number, message=str(e)))
+
+#     return CsvImportResultPlannedWorkouts(items=items, errors=errors)
+
+
+# def import_workout_logs_csv(csv_text: str) -> CsvImportResultWorkoutLogs:
+    # buf = StringIO(csv_text)
+    # reader = csv.DictReader(buf)
+
+    # items: list[WorkoutLog] = []
+    # errors: list[CsvRowError] = []
+
+    # for row in reader:
+    #     row_number = reader.line_num
+    #     try:
+    #         items.append(WorkoutLog.model_validate(row))
+    #     except ValidationError as e:
+    #         errors.append(CsvRowError(row_number=row_number, message=str(e)))
+
+    # return CsvImportResultWorkoutLogs(items=items, errors=errors)
+
+
+def _clean_cell(v: str | None) -> str | None:
+    if v is None:
+        return None
+    v = v.strip()
+    return None if v == "" else v
+
+
+def _parse_bool_cell(v: str | None) -> bool | str | None:
+    v2 = _clean_cell(v)
+    if v2 is None:
+        return None
+    if v2.lower() in {"true", "t", "1", "yes", "y"}:
+        return True
+    if v2.lower() in {"false", "f", "0", "no", "n"}:
+        return False
+    return v  # let Pydantic raise a ValidationError
+
+
 def import_planned_workouts_csv(csv_text: str) -> CsvImportResultPlannedWorkouts:
     buf = StringIO(csv_text)
     reader = csv.DictReader(buf)
@@ -99,10 +152,26 @@ def import_planned_workouts_csv(csv_text: str) -> CsvImportResultPlannedWorkouts
     items: list[PlannedWorkout] = []
     errors: list[CsvRowError] = []
 
-    # DictReader line_num is the current line in the CSV (1-based, header is 1).
     for row in reader:
         row_number = reader.line_num
         try:
+            row = {k: (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
+
+            # Normalize empty strings to None for optional fields
+            row["route_id"] = _clean_cell(row.get("route_id"))
+            row["structure_text"] = _clean_cell(row.get("structure_text"))
+
+            for k in [
+                "target_distance_km",
+                "target_duration_min",
+                "target_pace_min_per_km_low",
+                "target_pace_min_per_km_high",
+            ]:
+                row[k] = _clean_cell(row.get(k))
+
+            # Parse bool
+            row["locked"] = _parse_bool_cell(row.get("locked"))
+
             items.append(PlannedWorkout.model_validate(row))
         except ValidationError as e:
             errors.append(CsvRowError(row_number=row_number, message=str(e)))
@@ -120,6 +189,13 @@ def import_workout_logs_csv(csv_text: str) -> CsvImportResultWorkoutLogs:
     for row in reader:
         row_number = reader.line_num
         try:
+            row = {k: (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
+
+            row["linked_planned_workout_id"] = _clean_cell(row.get("linked_planned_workout_id"))
+            row["notes"] = _clean_cell(row.get("notes"))
+            row["actual_distance_km"] = _clean_cell(row.get("actual_distance_km"))
+            row["actual_duration_min"] = _clean_cell(row.get("actual_duration_min"))
+
             items.append(WorkoutLog.model_validate(row))
         except ValidationError as e:
             errors.append(CsvRowError(row_number=row_number, message=str(e)))
