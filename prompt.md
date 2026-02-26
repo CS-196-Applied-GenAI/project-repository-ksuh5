@@ -11,7 +11,7 @@ Use these prompts **in order** with a code-generation LLM. Each prompt is design
 - Web-first: API consumed by JavaScript frontend
 - Framework: **FastAPI**
 - DB: **PostgreSQL**
-- ORM: **SQLAlchemy 2.x** (async or sync—pick one and stay consistent)
+- ORM: **SQLAlchemy 2.x** (async and stay consistent)
 - Migrations: **Alembic**
 - Tests: **pytest** + **httpx** (for API) + **testcontainers** (or docker-compose) for Postgres in CI
 - Validation: **Pydantic v2**
