@@ -1,5 +1,8 @@
 from fastapi import FastAPI, HTTPException
 
+from app.models import StateLoadResponse, StateSaveRequest, StateSnapshot
+from app.state_store import load_snapshot, save_snapshot
+
 from app.csv_io import (
     export_planned_workouts_csv,
     export_workout_logs_csv,
@@ -17,6 +20,8 @@ from app.models import (
     RouteSnapResponse,
 )
 from app.planning import recalculate_plan
+
+import json
 
 app = FastAPI()
 
@@ -114,3 +119,19 @@ def routes_snap(req: RouteSnapRequest) -> RouteSnapResponse:
     except OsrmError as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
     
+
+
+@app.post("/state/save")
+def state_save(req: StateSaveRequest) -> dict:
+    snapshot_json = json.dumps(req.snapshot.data, sort_keys=True, separators=(",", ":"))
+    save_snapshot(snapshot_json)
+    return {"status": "ok"}
+
+
+@app.get("/state/load", response_model=StateLoadResponse)
+def state_load() -> StateLoadResponse:
+    snapshot_json = load_snapshot()
+    if snapshot_json is None:
+        return StateLoadResponse(snapshot=None)
+    data = json.loads(snapshot_json)
+    return StateLoadResponse(snapshot=StateSnapshot(data=data))

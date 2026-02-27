@@ -142,3 +142,24 @@ class RouteSnapResponse(BaseModel):
     geometry: dict
     start: LatLng
     end: LatLng
+
+
+class StateSnapshot(BaseModel):
+    data: dict
+
+
+class StateSaveRequest(BaseModel):
+    snapshot: StateSnapshot
+
+
+class StateLoadResponse(BaseModel):
+    snapshot: StateSnapshot | None
+
+class CsvImportRequest(BaseModel):
+    planned_workouts_csv: str
+    workout_logs_csv: str
+
+
+class CsvImportResponse(BaseModel):
+    planned_workouts: CsvImportResultPlannedWorkouts
+    workout_logs: CsvImportResultWorkoutLogs
