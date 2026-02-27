@@ -94,6 +94,15 @@ class CsvImportResultWorkoutLogs(BaseModel):
     items: list[WorkoutLog]
     errors: list[CsvRowError]
 
+class CsvImportRequest(BaseModel):
+    planned_workouts_csv: str
+    workout_logs_csv: str
+
+
+class CsvImportResponse(BaseModel):
+    planned_workouts: CsvImportResultPlannedWorkouts
+    workout_logs: CsvImportResultWorkoutLogs
+
 
 from pydantic import Field
 from pydantic.types import conlist
@@ -155,11 +164,3 @@ class StateSaveRequest(BaseModel):
 class StateLoadResponse(BaseModel):
     snapshot: StateSnapshot | None
 
-class CsvImportRequest(BaseModel):
-    planned_workouts_csv: str
-    workout_logs_csv: str
-
-
-class CsvImportResponse(BaseModel):
-    planned_workouts: CsvImportResultPlannedWorkouts
-    workout_logs: CsvImportResultWorkoutLogs
