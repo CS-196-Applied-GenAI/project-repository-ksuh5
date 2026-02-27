@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import csv
+from datetime import date
 from io import StringIO
+from uuid import UUID
 
 from pydantic import ValidationError
 
@@ -11,6 +13,7 @@ from app.models import (
     CsvRowError,
     PlannedWorkout,
     WorkoutLog,
+    WorkoutType,
 )
 
 PLANNED_WORKOUT_COLUMNS = [
@@ -92,41 +95,6 @@ def export_workout_logs_csv(logs: list[WorkoutLog]) -> str:
     return buf.getvalue()
 
 
-# def import_planned_workouts_csv(csv_text: str) -> CsvImportResultPlannedWorkouts:
-#     buf = StringIO(csv_text)
-#     reader = csv.DictReader(buf)
-
-#     items: list[PlannedWorkout] = []
-#     errors: list[CsvRowError] = []
-
-#     # DictReader line_num is the current line in the CSV (1-based, header is 1).
-#     for row in reader:
-#         row_number = reader.line_num
-#         try:
-#             items.append(PlannedWorkout.model_validate(row))
-#         except ValidationError as e:
-#             errors.append(CsvRowError(row_number=row_number, message=str(e)))
-
-#     return CsvImportResultPlannedWorkouts(items=items, errors=errors)
-
-
-# def import_workout_logs_csv(csv_text: str) -> CsvImportResultWorkoutLogs:
-    # buf = StringIO(csv_text)
-    # reader = csv.DictReader(buf)
-
-    # items: list[WorkoutLog] = []
-    # errors: list[CsvRowError] = []
-
-    # for row in reader:
-    #     row_number = reader.line_num
-    #     try:
-    #         items.append(WorkoutLog.model_validate(row))
-    #     except ValidationError as e:
-    #         errors.append(CsvRowError(row_number=row_number, message=str(e)))
-
-    # return CsvImportResultWorkoutLogs(items=items, errors=errors)
-
-
 def _clean_cell(v: str | None) -> str | None:
     if v is None:
         return None
@@ -145,6 +113,76 @@ def _parse_bool_cell(v: str | None) -> bool | str | None:
     return v  # let Pydantic raise a ValidationError
 
 
+def _parse_required_uuid(v: str | None, *, field: str) -> UUID:
+    v2 = _clean_cell(v)
+    if v2 is None:
+        raise ValueError(f"Missing required field '{field}'")
+    try:
+        return UUID(v2)
+    except Exception as e:
+        raise ValueError(f"Invalid UUID for '{field}': {v2}") from e
+
+
+def _parse_optional_uuid(v: str | None, *, field: str) -> UUID | None:
+    v2 = _clean_cell(v)
+    if v2 is None:
+        return None
+    try:
+        return UUID(v2)
+    except Exception as e:
+        raise ValueError(f"Invalid UUID for '{field}': {v2}") from e
+
+
+def _parse_required_date(v: str | None, *, field: str) -> date:
+    v2 = _clean_cell(v)
+    if v2 is None:
+        raise ValueError(f"Missing required field '{field}'")
+    try:
+        return date.fromisoformat(v2)
+    except Exception as e:
+        raise ValueError(f"Invalid date for '{field}': {v2} (expected YYYY-MM-DD)") from e
+
+
+def _parse_required_workout_type(v: str | None, *, field: str = "type") -> WorkoutType:
+    v2 = _clean_cell(v)
+    if v2 is None:
+        raise ValueError(f"Missing required field '{field}'")
+    try:
+        return WorkoutType(v2)
+    except Exception as e:
+        allowed = ", ".join([wt.value for wt in WorkoutType])
+        raise ValueError(f"Invalid workout type '{v2}'. Allowed: {allowed}") from e
+
+
+def _parse_optional_float(v: str | None, *, field: str) -> float | None:
+    v2 = _clean_cell(v)
+    if v2 is None:
+        return None
+    try:
+        return float(v2)
+    except Exception as e:
+        raise ValueError(f"Invalid float for '{field}': {v2}") from e
+
+
+def _parse_optional_int(v: str | None, *, field: str) -> int | None:
+    v2 = _clean_cell(v)
+    if v2 is None:
+        return None
+    try:
+        return int(v2)
+    except Exception as e:
+        raise ValueError(f"Invalid int for '{field}': {v2}") from e
+
+
+def _parse_required_bool(v: str | None, *, field: str) -> bool:
+    parsed = _parse_bool_cell(v)
+    if isinstance(parsed, bool):
+        return parsed
+    if parsed is None:
+        raise ValueError(f"Missing required field '{field}'")
+    raise ValueError(f"Invalid boolean for '{field}': {parsed} (expected true/false)")
+
+
 def import_planned_workouts_csv(csv_text: str) -> CsvImportResultPlannedWorkouts:
     buf = StringIO(csv_text)
     reader = csv.DictReader(buf)
@@ -157,23 +195,30 @@ def import_planned_workouts_csv(csv_text: str) -> CsvImportResultPlannedWorkouts
         try:
             row = {k: (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
 
-            # Normalize empty strings to None for optional fields
-            row["route_id"] = _clean_cell(row.get("route_id"))
-            row["structure_text"] = _clean_cell(row.get("structure_text"))
+            normalized = {
+                "id": _parse_required_uuid(row.get("id"), field="id"),
+                "date": _parse_required_date(row.get("date"), field="date"),
+                "type": _parse_required_workout_type(row.get("type"), field="type"),
+                "locked": _parse_required_bool(row.get("locked"), field="locked"),
+                "target_distance_km": _parse_optional_float(
+                    row.get("target_distance_km"), field="target_distance_km"
+                ),
+                "target_duration_min": _parse_optional_int(
+                    row.get("target_duration_min"), field="target_duration_min"
+                ),
+                "target_pace_min_per_km_low": _parse_optional_float(
+                    row.get("target_pace_min_per_km_low"), field="target_pace_min_per_km_low"
+                ),
+                "target_pace_min_per_km_high": _parse_optional_float(
+                    row.get("target_pace_min_per_km_high"), field="target_pace_min_per_km_high"
+                ),
+                "structure_text": _clean_cell(row.get("structure_text")),
+                "race_id": _parse_required_uuid(row.get("race_id"), field="race_id"),
+                "route_id": _parse_optional_uuid(row.get("route_id"), field="route_id"),
+            }
 
-            for k in [
-                "target_distance_km",
-                "target_duration_min",
-                "target_pace_min_per_km_low",
-                "target_pace_min_per_km_high",
-            ]:
-                row[k] = _clean_cell(row.get(k))
-
-            # Parse bool
-            row["locked"] = _parse_bool_cell(row.get("locked"))
-
-            items.append(PlannedWorkout.model_validate(row))
-        except ValidationError as e:
+            items.append(PlannedWorkout.model_validate(normalized))
+        except (ValidationError, ValueError) as e:
             errors.append(CsvRowError(row_number=row_number, message=str(e)))
 
     return CsvImportResultPlannedWorkouts(items=items, errors=errors)
@@ -191,13 +236,25 @@ def import_workout_logs_csv(csv_text: str) -> CsvImportResultWorkoutLogs:
         try:
             row = {k: (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
 
-            row["linked_planned_workout_id"] = _clean_cell(row.get("linked_planned_workout_id"))
-            row["notes"] = _clean_cell(row.get("notes"))
-            row["actual_distance_km"] = _clean_cell(row.get("actual_distance_km"))
-            row["actual_duration_min"] = _clean_cell(row.get("actual_duration_min"))
+            normalized = {
+                "id": _parse_required_uuid(row.get("id"), field="id"),
+                "date": _parse_required_date(row.get("date"), field="date"),
+                "type": _parse_required_workout_type(row.get("type"), field="type"),
+                "actual_distance_km": _parse_optional_float(
+                    row.get("actual_distance_km"), field="actual_distance_km"
+                ),
+                "actual_duration_min": _parse_optional_int(
+                    row.get("actual_duration_min"), field="actual_duration_min"
+                ),
+                "notes": _clean_cell(row.get("notes")),
+                "linked_planned_workout_id": _parse_optional_uuid(
+                    row.get("linked_planned_workout_id"),
+                    field="linked_planned_workout_id",
+                ),
+            }
 
-            items.append(WorkoutLog.model_validate(row))
-        except ValidationError as e:
+            items.append(WorkoutLog.model_validate(normalized))
+        except (ValidationError, ValueError) as e:
             errors.append(CsvRowError(row_number=row_number, message=str(e)))
 
     return CsvImportResultWorkoutLogs(items=items, errors=errors)

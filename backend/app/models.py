@@ -5,7 +5,8 @@ from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel
-
+from pydantic import Field
+from pydantic.types import conlist
 
 class WorkoutType(str, Enum):
     EASY_RUN = "easy run"
@@ -106,6 +107,33 @@ class LatLng(BaseModel):
 class RouteSnapRequest(BaseModel):
     waypoints: conlist(LatLng, min_length=2) = Field(
         ..., description="At least 2 waypoints are required to build a route."
+    )
+
+
+class RouteSnapResponse(BaseModel):
+    distance_km: float
+    geometry: dict
+    start: LatLng
+    end: LatLng
+
+class CsvImportRequest(BaseModel):
+    planned_workouts_csv: str
+    workout_logs_csv: str
+
+
+class CsvImportResponse(BaseModel):
+    planned_workouts: CsvImportResultPlannedWorkouts
+    workout_logs: CsvImportResultWorkoutLogs
+
+class LatLng(BaseModel):
+    lat: float
+    lng: float
+
+
+class RouteSnapRequest(BaseModel):
+    # 422 automatically if fewer than 2
+    waypoints: conlist(LatLng, min_length=2) = Field(
+        ..., description="At least 2 waypoints are required."
     )
 
 

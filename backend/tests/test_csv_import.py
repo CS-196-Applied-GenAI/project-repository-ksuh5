@@ -3,9 +3,10 @@ from app.csv_io import import_planned_workouts_csv, import_workout_logs_csv
 
 def test_import_planned_workouts_csv_one_valid_row():
     csv_text = """id,date,type,target_distance_km,target_duration_min,target_pace_min_per_km_low,target_pace_min_per_km_high,structure_text,locked,race_id,route_id
-11111111-1111-1111-1111-111111111111,2026-02-28,easy run,5.0,30,,,,Warmup,False,22222222-2222-2222-2222-222222222222,
+11111111-1111-1111-1111-111111111111,2026-02-28,easy run,5.0,30,,,Warmup,False,22222222-2222-2222-2222-222222222222,
 """
     result = import_planned_workouts_csv(csv_text)
+    assert result.errors == [], result.errors
     assert len(result.items) == 1
     assert len(result.errors) == 0
     assert result.items[0].type.value == "easy run"
