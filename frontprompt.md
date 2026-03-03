@@ -3,7 +3,7 @@
 Use these prompts sequentially with a code-generation LLM.  
 They are designed to: (1) keep steps small, (2) add tests early, (3) ensure every change is wired into the running app, and (4) avoid orphaned code.
 
-**Repository assumption:** you are working in the repo that contains `frontplan.md` and `frontend/frontspec.md`.  
+**Repository assumption:** you are working in the repo that contains `frontplan.md` and `frontspec.md`.  
 **Stack:** Vite + React (JS), Dexie, Vitest + Testing Library.  
 **Rule:** Each step must end with a working app (`npm run dev`) and passing tests (`npm test` / `npm run test`).
 
@@ -11,13 +11,13 @@ They are designed to: (1) keep steps small, (2) add tests early, (3) ensure ever
 
 ## Prompt 0 — Setup & docs (scaffold)
 ```text
-You are implementing the frontend described in `frontend/frontspec.md` following the phased plan in `frontplan.md`.
+You are implementing the frontend described in `frontspec.md` following the phased plan in `frontplan.md`.
 
 Step 0: Setup & docs
 Goal:
 - Create a new Vite + React (JavaScript) app inside the `frontend/` directory (if it doesn't already exist).
-- Ensure `frontend/frontspec.md` and `frontplan.md` remain unchanged.
-- Add/ensure `frontend/frontprompt.md` is present (this file will be created/updated by me later—do not generate it now unless it doesn't exist).
+- Ensure `frontspec.md` and `frontplan.md` remain unchanged.
+- Add/ensure `frontprompt.md` is present (this file will be created/updated by me later—do not generate it now unless it doesn't exist).
 
 Requirements:
 1) Use Vite + React template (JS).
@@ -605,7 +605,7 @@ Final wiring & cleanup
 
 Goal:
 - Remove or hide any temporary debug UI that was only for seeding/testing, or gate it behind a small "Developer tools" collapse section.
-- Confirm all key features from `frontend/frontspec.md` are accessible from the UI:
+- Confirm all key features from `frontspec.md` are accessible from the UI:
   - create race with prompt
   - week/month toggle
   - planned workouts on calendar, multiple/day, drag/drop confirm
