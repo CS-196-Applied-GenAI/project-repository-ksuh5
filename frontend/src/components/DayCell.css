@@ -1,0 +1,107 @@
+/* ── Base day cell ───────────────────────────────────────── */
+.day-cell {
+  min-height: 90px;
+  padding: 0.45rem 0.4rem 0.5rem;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: #fff;
+  transition: background 0.08s;
+  position: relative;
+}
+
+.day-cell:nth-child(7n) { border-right: none; }
+
+/* ── Variants ────────────────────────────────────────────── */
+.day-cell--compact     { min-height: 75px; padding: 0.35rem 0.3rem 0.4rem; }
+.day-cell--today       { background: #ebf8ff; }
+.day-cell--other-month { background: #f7fafc; opacity: 0.5; }
+.day-cell--out-of-range{ background: #f7fafc; opacity: 0.45; }
+
+/* ── Drag-over highlight ─────────────────────────────────── */
+.day-cell--drag-over {
+  background: #e6fffa !important;
+  outline: 2px dashed #38b2ac;
+  outline-offset: -2px;
+}
+
+/*
+ * KEY FIX: while any drag is in progress over the page, disable
+ * pointer-events on all cell children so dragover/dragleave/drop
+ * fire on the .day-cell container, not on nested elements.
+ *
+ * The :has() selector targets .day-cell only when a drag is active
+ * (signalled by .day-cell--drag-over on any sibling cell or itself).
+ * A simpler and fully cross-browser approach: set pointer-events:none
+ * on the children unconditionally — clicks are handled via bubbling
+ * from the card buttons themselves which re-enable interaction.
+ */
+.day-cell__date,
+.day-cell__empty,
+.day-cell__workouts,
+.day-cell__workouts li,
+.day-cell__logs,
+.day-cell__logs li {
+  pointer-events: none;
+}
+
+/*
+ * Re-enable pointer-events only on the interactive card buttons/divs
+ * themselves so clicks (open modal) still work normally.
+ */
+.day-cell__workouts .pw-card,
+.day-cell__logs     .wl-card {
+  pointer-events: auto;
+}
+
+/* ── Date label ──────────────────────────────────────────── */
+.day-cell__date {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.day-cell__today-pill {
+  font-size: 0.6rem;
+  font-weight: 700;
+  background: #3182ce;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.04rem 0.32rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Empty hint ──────────────────────────────────────────── */
+.day-cell__empty {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #cbd5e0;
+  text-align: center;
+  padding-top: 0.25rem;
+}
+
+/* ── Planned workout list ────────────────────────────────── */
+.day-cell__workouts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* ── Log list ────────────────────────────────────────────── */
+.day-cell__logs {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 0.2rem;
+  margin-top: 0.05rem;
+}

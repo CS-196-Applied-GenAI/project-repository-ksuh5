@@ -1,0 +1,62 @@
+/* Reuses .modal-backdrop, .modal-box, .modal-header, .modal-close,
+   .modal-title, .btn, .btn-cancel, .btn-primary, .form-field,
+   .form-label, .form-input, .required, .field-error, .save-error
+   from RaceModal.css.
+   This file adds only LogWorkoutModal-specific rules.              */
+
+.log-modal-box {
+  max-width: 440px;
+}
+
+/* ── Scrollable body ─────────────────────────────────────── */
+.log-modal-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.log-modal-body {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ── 2-column layout ─────────────────────────────────────── */
+.log-form-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.log-form-row--2col > .form-field {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Textarea ────────────────────────────────────────────── */
+.log-textarea {
+  resize: vertical;
+  min-height: 70px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ── Hint (attached flow) ────────────────────────────────── */
+.log-modal-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #4a5568;
+  background: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 7px;
+  padding: 0.45rem 0.65rem;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+.log-modal-footer {
+  padding: 0.7rem 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}

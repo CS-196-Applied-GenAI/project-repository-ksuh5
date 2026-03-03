@@ -1,0 +1,108 @@
+/* ── RaceBar ──────────────────────────────────────────────── */
+.race-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  flex-wrap: wrap;
+}
+
+.race-bar--empty {
+  background: #fff5f5;
+  border-color: #fed7d7;
+}
+
+/* ── Left cluster ────────────────────────────────────────── */
+.race-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.race-bar__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #2c5282;
+  white-space: nowrap;
+}
+
+.race-bar--empty .race-bar__label {
+  color: #c53030;
+}
+
+.race-bar__name {
+  font-weight: 600;
+  color: #1a365d;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.race-bar__dates {
+  font-size: 0.8rem;
+  color: #4299e1;
+  white-space: nowrap;
+}
+
+.race-bar__no-race {
+  font-size: 0.9rem;
+  color: #e53e3e;
+  font-style: italic;
+}
+
+.race-bar__badge {
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #c6f6d5;
+  color: #276749;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.race-bar__select {
+  font-size: 0.88rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #bee3f8;
+  border-radius: 5px;
+  background: #fff;
+  color: #1a365d;
+  cursor: pointer;
+}
+
+.race-bar__select:focus {
+  outline: 2px solid #4299e1;
+  outline-offset: 1px;
+}
+
+/* ── New Race button ─────────────────────────────────────── */
+.race-bar__new-btn {
+  padding: 0.38rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #3182ce;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.race-bar__new-btn:hover {
+  background: #2b6cb0;
+}
