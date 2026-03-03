@@ -21,7 +21,7 @@ export async function seedSampleData() {
     id: raceId,
     name: 'Sample Race',
     startDate: today,
-    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), // 90 days from today
     status: 'active',
     createdAt: now,
     updatedAt: now,

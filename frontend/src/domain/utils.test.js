@@ -7,7 +7,7 @@ describe('formatCounts', () => {
       .toBe('Races: 0 | Planned: 0 | Logs: 0')
   })
   it('formats non-zero counts', () => {
-    expect(formatCounts({ races: [1], plannedWorkouts: [1,2], workoutLogs: [1] }))
+    expect(formatCounts({ races: [1], plannedWorkouts: [1, 2], workoutLogs: [1] }))
       .toBe('Races: 1 | Planned: 2 | Logs: 1')
   })
 })
