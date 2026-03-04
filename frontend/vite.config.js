@@ -1,6 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [react()],
-})
+  test: {
+    // run in Node (no DOM needed for pure unit tests in Step 1)
+    environment: 'node',
+  },
+});

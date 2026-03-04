@@ -1,23 +1,19 @@
-/**
- * useAppData
- *
- * Loads all three tables from Dexie into React state on mount.
- * Also exposes a `reload` function to re-query after mutations.
- */
 import { useState, useEffect, useCallback } from 'react';
 import db from '../db/db.js';
 
 export function useAppData() {
-  const [races, setRaces] = useState([]);
+  const [races,           setRaces]           = useState([]);
   const [plannedWorkouts, setPlannedWorkouts] = useState([]);
-  const [workoutLogs, setWorkoutLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [workoutLogs,     setWorkoutLogs]     = useState([]);
+  const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // All three must be loaded together — missing workoutLogs here
+      // is the most common reason logs appear to revert after a move.
       const [r, pw, wl] = await Promise.all([
         db.races.toArray(),
         db.plannedWorkouts.toArray(),
@@ -27,17 +23,14 @@ export function useAppData() {
       setPlannedWorkouts(pw);
       setWorkoutLogs(wl);
     } catch (err) {
-      console.error('Failed to load data from Dexie:', err);
-      setError(err.message ?? 'Unknown error');
+      console.error('[useAppData] load failed:', err);
+      setError(err.message ?? 'Failed to load data.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Load once on mount
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   return { races, plannedWorkouts, workoutLogs, loading, error, reload: load };
 }
