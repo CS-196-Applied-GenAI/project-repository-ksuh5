@@ -1,24 +1,19 @@
+/**
+ * Dexie database definition.
+ *
+ * ALL THREE tables must be declared here with the correct primary key.
+ * If workoutLogs is missing or on a stale schema version, put() will
+ * throw "Table workoutLogs not part of this database" at runtime and
+ * the log move silently reverts when reload() re-reads the old data.
+ */
 import Dexie from 'dexie';
 
-/**
- * Single Dexie database instance for the Training Planner app.
- *
- * Tables (v1):
- *   races           – Race records
- *   plannedWorkouts – PlannedWorkout records (belong to a race)
- *   workoutLogs     – WorkoutLog records (optional link to a plannedWorkout)
- *
- * Key principle: Dexie is persistence; React state is the UI cache.
- * Every mutation writes to Dexie first, then updates React state.
- */
 const db = new Dexie('TrainingPlannerDB');
 
 db.version(1).stores({
-  // Primary key first, then indexed columns.
-  // All other fields are stored but not indexed.
-  races: 'id, status, name',
+  races:           'id, status, startDate, endDate',
   plannedWorkouts: 'id, raceId, date, type',
-  workoutLogs: 'id, plannedWorkoutId, date, type',
+  workoutLogs:     'id, plannedWorkoutId, date, type',
 });
 
 export default db;

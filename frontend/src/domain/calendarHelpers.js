@@ -1,18 +1,13 @@
 /**
  * Calendar date helpers.
  *
- * All dates are represented as YYYY-MM-DD strings.
+ * All dates are YYYY-MM-DD strings.
  * Weeks start on Monday (ISO 8601).
- *
- * NOTE: All arithmetic is done with local Date objects constructed
- * from the YYYY-MM-DD string directly (no timezone shifts) by
- * parsing the parts manually.
  */
 
 /**
  * Parse a YYYY-MM-DD string into a local Date (midnight).
  * Avoids the UTC-shift that `new Date('YYYY-MM-DD')` causes.
- *
  * @param {string} ymd
  * @returns {Date}
  */
@@ -22,8 +17,7 @@ export function parseYMD(ymd) {
 }
 
 /**
- * Format a Date into a YYYY-MM-DD string using local time.
- *
+ * Format a local Date into a YYYY-MM-DD string.
  * @param {Date} date
  * @returns {string}
  */
@@ -34,28 +28,28 @@ export function formatYMD(date) {
   return `${y}-${m}-${d}`;
 }
 
+/** Today as YYYY-MM-DD (local time). */
+export function today() {
+  return formatYMD(new Date());
+}
+
 /**
- * Returns the Monday of the week containing the given date (YYYY-MM-DD).
- * If the given date IS Monday, returns it unchanged.
- *
+ * Returns the Monday of the week containing `ymd`.
  * @param {string} ymd
  * @returns {string}
  */
 export function startOfWeek(ymd) {
   const date = parseYMD(ymd);
-  // getDay(): 0=Sun, 1=Mon, … 6=Sat
-  // We want Monday=0 offset, so shift: (day + 6) % 7 gives 0 for Mon.
-  const dayOfWeek = (date.getDay() + 6) % 7; // Mon=0, Tue=1, … Sun=6
+  const dayOfWeek = (date.getDay() + 6) % 7; // Mon=0 … Sun=6
   const monday = new Date(date);
   monday.setDate(date.getDate() - dayOfWeek);
   return formatYMD(monday);
 }
 
 /**
- * Returns a new YYYY-MM-DD string that is `n` days after (or before if n<0) the given date.
- *
+ * Returns a new YYYY-MM-DD that is `n` days after (or before if n<0) `ymd`.
  * @param {string} ymd
- * @param {number} n  Number of days to add (may be negative).
+ * @param {number} n
  * @returns {string}
  */
 export function addDays(ymd, n) {
@@ -65,11 +59,10 @@ export function addDays(ymd, n) {
 }
 
 /**
- * Returns an array of 7 YYYY-MM-DD strings representing Mon–Sun
- * for the week that contains the given date.
- *
+ * Returns 7 YYYY-MM-DD strings (Mon–Sun) for the week containing `ymd`.
+ * Index 0 = Monday, index 6 = Sunday.
  * @param {string} ymd
- * @returns {string[]}  Array of length 7, index 0 = Monday.
+ * @returns {string[]}
  */
 export function getWeekDays(ymd) {
   const monday = startOfWeek(ymd);
@@ -77,43 +70,119 @@ export function getWeekDays(ymd) {
 }
 
 /**
- * Returns a 2D array of YYYY-MM-DD strings representing the month
- * grid for the month containing `ymd`. Each inner array is a 7-element
- * Mon–Sun week. Leading/trailing days from adjacent months are included
- * to fill the grid.
+ * Returns a flat array of YYYY-MM-DD strings representing the full
+ * month grid for the month containing `ymd`.
  *
- * Returns 5 or 6 weeks depending on the month layout.
+ * - Length is always a multiple of 7 (complete weeks).
+ * - Grid starts on the Monday on or before the 1st of the month.
+ * - Grid ends on the Sunday on or after the last day of the month.
+ * - Leading days from the previous month and trailing days from the
+ *   next month are included to fill complete weeks.
+ * - Returns 35 (5 weeks) or 42 (6 weeks) days depending on the month.
  *
+ * @param {string} ymd  Any date within the target month.
+ * @returns {string[]}
+ */
+export function getMonthGridDays(ymd) {
+  const ref   = parseYMD(ymd);
+  const year  = ref.getFullYear();
+  const month = ref.getMonth(); // 0-indexed
+
+  const firstOfMonth = new Date(year, month, 1);
+  const lastOfMonth  = new Date(year, month + 1, 0);
+
+  // Start: Monday on or before the 1st
+  const gridStart = startOfWeek(formatYMD(firstOfMonth));
+
+  // End: Sunday on or after the last day
+  const lastDaySlot  = (lastOfMonth.getDay() + 6) % 7; // Mon=0 … Sun=6
+  const daysToSunday = lastDaySlot === 6 ? 0 : 6 - lastDaySlot;
+  const gridEnd      = addDays(formatYMD(lastOfMonth), daysToSunday);
+
+  const days = [];
+  let current = gridStart;
+  while (current <= gridEnd) {
+    days.push(current);
+    current = addDays(current, 1);
+  }
+  return days;
+}
+
+/**
+ * Returns a 2-D array of YYYY-MM-DD strings (weeks × 7 days) for the
+ * month grid. Thin wrapper around getMonthGridDays.
  * @param {string} ymd
  * @returns {string[][]}
  */
 export function getMonthGrid(ymd) {
-  const ref = parseYMD(ymd);
-  const year = ref.getFullYear();
-  const month = ref.getMonth(); // 0-indexed
-
-  // First and last day of the month
-  const firstOfMonth = new Date(year, month, 1);
-  const lastOfMonth = new Date(year, month + 1, 0);
-
-  // Start grid from the Monday on or before the 1st
-  const gridStart = startOfWeek(formatYMD(firstOfMonth));
-  // End grid from the Sunday on or after the last day
-  const lastDayOfWeek = (lastOfMonth.getDay() + 6) % 7; // 0=Mon…6=Sun
-  const daysToSunday = lastDayOfWeek === 6 ? 0 : 6 - lastDayOfWeek;
-  const gridEnd = addDays(formatYMD(lastOfMonth), daysToSunday);
-
+  const flat = getMonthGridDays(ymd);
   const weeks = [];
-  let current = gridStart;
-
-  while (current <= gridEnd) {
-    const week = [];
-    for (let i = 0; i < 7; i++) {
-      week.push(current);
-      current = addDays(current, 1);
-    }
-    weeks.push(week);
+  for (let i = 0; i < flat.length; i += 7) {
+    weeks.push(flat.slice(i, i + 7));
   }
-
   return weeks;
+}
+
+/**
+ * Groups an array of PlannedWorkout objects by their `date` field.
+ * Returns { [YYYY-MM-DD]: PlannedWorkout[] }.
+ * @param {Array<{ id: string, date: string }>} plannedWorkouts
+ * @returns {Record<string, Array<{ id: string, date: string }>>}
+ */
+export function groupPlannedByDate(plannedWorkouts) {
+  const map = {};
+  for (const pw of plannedWorkouts) {
+    if (!map[pw.date]) map[pw.date] = [];
+    map[pw.date].push(pw);
+  }
+  return map;
+}
+
+/** Short day-of-week label ("Mon", "Tue", …) for a YYYY-MM-DD string. */
+export function shortDayLabel(ymd) {
+  return parseYMD(ymd).toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+/** "Mar 10" style label for a YYYY-MM-DD string. */
+export function shortDateLabel(ymd) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    month: 'short',
+    day:   'numeric',
+  });
+}
+
+/**
+ * Returns the first day of the month for a YYYY-MM-DD string.
+ * @param {string} ymd
+ * @returns {string}
+ */
+export function startOfMonth(ymd) {
+  const [y, m] = ymd.split('-');
+  return `${y}-${m}-01`;
+}
+
+/**
+ * Returns the first day of the next month.
+ * @param {string} ymd
+ * @returns {string}
+ */
+export function addMonths(ymd, n) {
+  const ref = parseYMD(ymd);
+  ref.setDate(1); // pin to 1st to avoid month-length edge cases
+  ref.setMonth(ref.getMonth() + n);
+  return formatYMD(ref);
+}
+
+/**
+ * "March 2026" style label for a YYYY-MM-DD string.
+ * @param {string} ymd
+ * @returns {string}
+ */
+export function monthYearLabel(ymd) {
+  const [y, m] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year:  'numeric',
+  });
 }
