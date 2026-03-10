@@ -1,0 +1,126 @@
+/* ── Layout ──────────────────────────────────────────────── */
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 3rem;
+  font-family: system-ui, sans-serif;
+}
+
+.app-header {
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.app-header h1 {
+  margin: 0 0 0.2rem 0;
+  font-size: 1.75rem;
+  color: #1a202c;
+}
+
+.app-status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #38a169;
+}
+
+.app-main section {
+  margin-bottom: 2rem;
+}
+
+.app-main h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 0.6rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Counts ──────────────────────────────────────────────── */
+.counts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.counts-list li {
+  background: #edf2f7;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  color: #4a5568;
+}
+
+.count-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2b6cb0;
+  display: block;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+
+/* ── Seed button ─────────────────────────────────────────── */
+.btn-seed {
+  padding: 0.55rem 1.1rem;
+  font-size: 0.95rem;
+  background: #2b6cb0;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-seed:hover:not(:disabled) {
+  background: #2c5282;
+}
+
+.btn-seed:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.seed-ok {
+  margin-top: 0.5rem;
+  color: #38a169;
+  font-size: 0.9rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #718096;
+  margin-top: 0.5rem;
+}
+
+/* ── Active race card ────────────────────────────────────── */
+.race-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  color: #276749;
+}
+
+.race-dates {
+  font-size: 0.82rem;
+  color: #38a169;
+}
+
+/* ── Shared states ───────────────────────────────────────── */
+.loading {
+  color: #718096;
+  font-style: italic;
+}
+
+.error {
+  color: #e53e3e;
+  font-size: 0.9rem;
+}
