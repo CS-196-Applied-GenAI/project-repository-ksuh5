@@ -1,13 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppData } from './hooks/useAppData.js';
 import { seedSampleData } from './db/seed.js';
 import { formatCount } from './utils/formatters.js';
 import { displayWorkoutType, isQualityType } from './domain/workoutTypes.js';
+import { getActiveRaceId } from './domain/raceHelpers.js';
+import RaceBar from './components/RaceBar.jsx';
 import './App.css';
 
 export default function App() {
   const { races, plannedWorkouts, workoutLogs, loading, error, reload } =
     useAppData();
+
+  // ── Active race selection ──────────────────────────────
+  // Derived from Dexie on every load; no separate settings table needed.
+  const [activeRaceId, setActiveRaceId] = useState(null);
+
+  // Auto-select when data loads: pick the one active race if it exists.
+  useEffect(() => {
+    if (!loading) {
+      const id = getActiveRaceId(races);
+      setActiveRaceId(id);
+    }
+  }, [loading, races]);
+
+  const activeRace =
+    races.find((r) => r.id === activeRaceId) ?? null;
+
+  const activePlannedWorkouts = activeRace
+    ? plannedWorkouts.filter((pw) => pw.raceId === activeRace.id)
+    : [];
+
+  // ── Seed ──────────────────────────────────────────────
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
 
@@ -25,23 +48,27 @@ export default function App() {
     }
   }
 
-  // Active race (for display)
-  const activeRace = races.find((r) => r.status === 'active') ?? null;
-
-  // Planned workouts belonging to the active race
-  const activePlannedWorkouts = activeRace
-    ? plannedWorkouts.filter((pw) => pw.raceId === activeRace.id)
-    : [];
-
+  // ── Render ────────────────────────────────────────────
   return (
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 2 — Domain layer ✓</p>
+        <p className="app-status">Step 3 — RaceBar ✓</p>
       </header>
 
       <main className="app-main">
-        {/* ── Data counts ─────────────────────────────── */}
+        {/* ── Race bar ──────────────────────────────── */}
+        {!loading && (
+          <section className="racebar-section">
+            <RaceBar
+              races={races}
+              activeRaceId={activeRaceId}
+              onSelect={setActiveRaceId}
+            />
+          </section>
+        )}
+
+        {/* ── Counts ───────────────────────────────── */}
         <section className="counts-section">
           <h2>IndexedDB counts</h2>
           {loading ? (
@@ -66,17 +93,13 @@ export default function App() {
           )}
         </section>
 
-        {/* ── Active race + planned workouts ──────────── */}
+        {/* ── Planned workouts for active race ─────── */}
         {!loading && activeRace && (
           <section className="active-race-section">
             <h2>
-              Active race —{' '}
+              Planned workouts —{' '}
               <span className="race-name">{activeRace.name}</span>
             </h2>
-            <p className="race-dates">
-              {activeRace.startDate} → {activeRace.endDate}
-            </p>
-
             {activePlannedWorkouts.length === 0 ? (
               <p className="hint">No planned workouts for this race.</p>
             ) : (
@@ -95,7 +118,10 @@ export default function App() {
                       <span className="workout-title">{pw.title}</span>
                     )}
                     {pw.locked && (
-                      <span className="workout-locked" title="Locked — recalc will not change this">
+                      <span
+                        className="workout-locked"
+                        title="Locked — recalc will not change this"
+                      >
                         🔒
                       </span>
                     )}
@@ -106,7 +132,30 @@ export default function App() {
           </section>
         )}
 
-        {/* ── Dev tools / seed ────────────────────────── */}
+        {/* ── All races (debug view) ────────────────── */}
+        {!loading && races.length > 0 && (
+          <section className="all-races-section">
+            <h2>All races ({races.length})</h2>
+            <ul className="race-list">
+              {races.map((r) => (
+                <li
+                  key={r.id}
+                  className={`race-row race-row--${r.status}`}
+                >
+                  <span className="race-row__name">{r.name}</span>
+                  <span className="race-row__dates">
+                    {r.startDate} → {r.endDate}
+                  </span>
+                  <span className={`race-row__status race-row__status--${r.status}`}>
+                    {r.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* ── Dev tools ────────────────────────────── */}
         <section className="seed-section">
           <h2>Dev tools</h2>
           <button
@@ -126,8 +175,8 @@ export default function App() {
             </p>
           )}
           <p className="hint">
-            Inserts 1 active race + 1 planned workout + 1 unplanned log.
-            Refresh — counts persist.
+            Seeds: 1 active race (Spring 5K) + 1 archived race (Winter Race)
+            + 1 planned workout + 1 unplanned log.
           </p>
         </section>
       </main>

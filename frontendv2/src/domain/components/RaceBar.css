@@ -1,0 +1,73 @@
+/* ── RaceBar ──────────────────────────────────────────────── */
+.race-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  flex-wrap: wrap;
+}
+
+.race-bar--empty {
+  background: #fff5f5;
+  border-color: #fed7d7;
+}
+
+.race-bar__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #2c5282;
+  white-space: nowrap;
+}
+
+.race-bar--empty .race-bar__label {
+  color: #c53030;
+}
+
+.race-bar__name {
+  font-weight: 600;
+  color: #1a365d;
+  font-size: 0.95rem;
+}
+
+.race-bar__dates {
+  font-size: 0.82rem;
+  color: #4299e1;
+}
+
+.race-bar__no-race {
+  font-size: 0.9rem;
+  color: #e53e3e;
+  font-style: italic;
+}
+
+.race-bar__badge {
+  margin-left: auto;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #c6f6d5;
+  color: #276749;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.race-bar__select {
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #bee3f8;
+  border-radius: 5px;
+  background: #fff;
+  color: #1a365d;
+  cursor: pointer;
+}
+
+.race-bar__select:focus {
+  outline: 2px solid #4299e1;
+  outline-offset: 1px;
+}
