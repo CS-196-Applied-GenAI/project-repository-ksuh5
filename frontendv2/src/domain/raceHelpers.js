@@ -6,14 +6,20 @@
 
 /** Canonical race status values (mirrors frontspec.md). */
 export const RACE_STATUS = /** @type {const} */ ({
-  ACTIVE: 'active',
-  ARCHIVED: 'archived',
+  ACTIVE:    'active',
+  ARCHIVED:  'archived',
   COMPLETED: 'completed',
+});
+
+/** Decisions a user can make when a conflict exists. */
+export const CONFLICT_DECISION = /** @type {const} */ ({
+  ARCHIVE:  'archive',
+  COMPLETE: 'complete',
+  CANCEL:   'cancel',
 });
 
 /**
  * Returns a human-friendly label for a race status.
- *
  * @param {string} status
  * @returns {string}
  */
@@ -27,8 +33,7 @@ export function displayRaceStatus(status) {
 }
 
 /**
- * Returns the single active race from an array of races, or `null`.
- *
+ * Returns the single active race from an array, or `null`.
  * @param {Array<{id: string, status: string}>} races
  * @returns {{id: string, status: string} | null}
  */
@@ -38,29 +43,23 @@ export function getActiveRace(races) {
 
 /**
  * Returns the id of the single active race, or `null`.
- *
  * @param {Array<{id: string, status: string}>} races
  * @returns {string | null}
  */
 export function getActiveRaceId(races) {
-  const race = getActiveRace(races);
-  return race ? race.id : null;
+  return getActiveRace(races)?.id ?? null;
 }
 
 /**
  * Returns only the races with status "active".
- *
  * @param {Array<{id: string, status: string}>} races
- * @returns {Array<{id: string, status: string}>}
  */
 export function getSelectableRaces(races) {
   return races.filter((r) => r.status === RACE_STATUS.ACTIVE);
 }
 
 /**
- * Formats a race's date range as a short string.
- * e.g. "Mar 10, 2026 – May 1, 2026"
- *
+ * Formats a race's date range: "Mar 10, 2026 – May 1, 2026"
  * @param {{ startDate: string, endDate: string }} race
  * @returns {string}
  */
@@ -69,9 +68,7 @@ export function formatRaceDateRange(race) {
   const fmt = (ymd) => {
     const [y, m, d] = ymd.split('-').map(Number);
     return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+      month: 'short', day: 'numeric', year: 'numeric',
     });
   };
   return `${fmt(race.startDate)} – ${fmt(race.endDate)}`;
@@ -80,27 +77,10 @@ export function formatRaceDateRange(race) {
 /**
  * Constructs a new Race object ready to be persisted.
  *
- * Pure function: accepts an optional `now` ISO string and `id` so tests
- * can inject deterministic values without mocking globals.
+ * Accepts optional `id` and `now` overrides for deterministic testing.
  *
- * @param {{
- *   name: string,
- *   startDate: string,
- *   endDate: string,
- * }} fields
- * @param {{
- *   id?: string,
- *   now?: string,
- * }} [overrides]  Inject id / timestamp for tests.
- * @returns {{
- *   id: string,
- *   name: string,
- *   startDate: string,
- *   endDate: string,
- *   status: 'active',
- *   createdAt: string,
- *   updatedAt: string,
- * }}
+ * @param {{ name: string, startDate: string, endDate: string }} fields
+ * @param {{ id?: string, now?: string }} [overrides]
  */
 export function makeRace(fields, overrides = {}) {
   const id  = overrides.id  ?? crypto.randomUUID();
@@ -113,5 +93,46 @@ export function makeRace(fields, overrides = {}) {
     status:    RACE_STATUS.ACTIVE,
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+/**
+ * Pure function: given an existing active race and a user decision,
+ * returns the mutations that should be applied.
+ *
+ * Return shape:
+ *   { cancelled: true }
+ *   — OR —
+ *   { cancelled: false, updatedExisting: Race }
+ *
+ * The caller is responsible for actually persisting the changes and
+ * creating the new race.
+ *
+ * @param {{
+ *   existingActiveRace: { id: string, status: string, updatedAt: string },
+ *   decision: 'archive' | 'complete' | 'cancel',
+ *   now?: string   // injectable for tests
+ * }} params
+ * @returns {{ cancelled: true } | { cancelled: false, updatedExisting: object }}
+ */
+export function applyNewRaceDecision({ existingActiveRace, decision, now }) {
+  if (decision === CONFLICT_DECISION.CANCEL) {
+    return { cancelled: true };
+  }
+
+  const timestamp = now ?? new Date().toISOString();
+
+  const newStatus =
+    decision === CONFLICT_DECISION.ARCHIVE
+      ? RACE_STATUS.ARCHIVED
+      : RACE_STATUS.COMPLETED;
+
+  return {
+    cancelled: false,
+    updatedExisting: {
+      ...existingActiveRace,
+      status:    newStatus,
+      updatedAt: timestamp,
+    },
   };
 }
