@@ -4,7 +4,7 @@ import { seedSampleData }       from './db/seed.js';
 import { formatCount }          from './utils/formatters.js';
 import { getActiveRaceId, getActiveRace, makeRace } from './domain/raceHelpers.js';
 import { today, addDays, startOfMonth, addMonths }  from './domain/calendarHelpers.js';
-import { createRaceEnforcingSingleActive }           from './db/mutations.js';
+import { createRaceEnforcingSingleActive, updatePlannedWorkout } from './db/mutations.js';
 import RaceBar              from './components/RaceBar.jsx';
 import RaceModal            from './components/RaceModal.jsx';
 import ConflictModal        from './components/ConflictModal.jsx';
@@ -30,7 +30,7 @@ export default function App() {
     ? plannedWorkouts.filter((pw) => pw.raceId === activeRace.id)
     : [];
 
-  // ── Calendar view + anchor ────────────────────────────
+  // ── Calendar ──────────────────────────────────────────
   const [calView, setCalView] = useState('week');
   const [anchor,  setAnchor]  = useState(today());
 
@@ -43,21 +43,28 @@ export default function App() {
   const handlePrevMonth = () => setAnchor((a) => addMonths(startOfMonth(a), -1));
   const handleNextMonth = () => setAnchor((a) => addMonths(startOfMonth(a), 1));
 
-  // ── Planned workout selection ─────────────────────────
+  // ── Planned workout selection + save ──────────────────
   const [selectedWorkoutId, setSelectedWorkoutId] = useState(null);
 
   const selectedWorkout =
     activePlannedWorkouts.find((pw) => pw.id === selectedWorkoutId) ?? null;
 
-  function handleSelectWorkout(workout) {
-    setSelectedWorkoutId(workout.id);
+  function handleSelectWorkout(workout) { setSelectedWorkoutId(workout.id); }
+  function handleCloseWorkoutModal()    { setSelectedWorkoutId(null); }
+
+  /**
+   * Persist a patch to a planned workout, then reload state.
+   * applyPlannedWorkoutPatch (inside updatePlannedWorkout) handles
+   * locked=true and updatedAt automatically.
+   */
+  async function handleSaveWorkout(id, patch) {
+    const existing = activePlannedWorkouts.find((pw) => pw.id === id);
+    if (!existing) throw new Error('Workout not found.');
+    await updatePlannedWorkout(existing, patch);
+    await reload();
   }
 
-  function handleCloseWorkoutModal() {
-    setSelectedWorkoutId(null);
-  }
-
-  // ── Race creation state machine ───────────────────────
+  // ── Race creation ─────────────────────────────────────
   const [raceModalOpen,     setRaceModalOpen]     = useState(false);
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [pendingRace,       setPendingRace]        = useState(null);
@@ -100,11 +107,10 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 8 — Planned workout selection ✓</p>
+        <p className="app-status">Step 9 — Planned workout editing ✓</p>
       </header>
 
       <main className="app-main">
-        {/* ── Race bar ──────────────────────────────── */}
         {!loading && (
           <section className="racebar-section">
             <RaceBar
@@ -116,7 +122,6 @@ export default function App() {
           </section>
         )}
 
-        {/* ── Calendar ──────────────────────────────── */}
         {!loading && (
           <section className="calendar-section">
             <div className="calendar-section__header">
@@ -153,7 +158,6 @@ export default function App() {
           </section>
         )}
 
-        {/* ── Counts ───────────────────────────────── */}
         <section className="counts-section">
           <h2>IndexedDB counts</h2>
           {loading ? (
@@ -169,7 +173,6 @@ export default function App() {
           )}
         </section>
 
-        {/* ── All races (debug) ────────────────────── */}
         {!loading && races.length > 0 && (
           <section className="all-races-section">
             <h2>All races ({races.length})</h2>
@@ -185,7 +188,6 @@ export default function App() {
           </section>
         )}
 
-        {/* ── Dev tools ────────────────────────────── */}
         <section className="seed-section">
           <h2>Dev tools</h2>
           <button className="btn-seed" onClick={handleSeed} disabled={seeding || creating}>
@@ -198,7 +200,6 @@ export default function App() {
         </section>
       </main>
 
-      {/* ── Modals ───────────────────────────────── */}
       <RaceModal
         isOpen={raceModalOpen}
         onClose={() => setRaceModalOpen(false)}
@@ -213,6 +214,7 @@ export default function App() {
         workout={selectedWorkout}
         isOpen={selectedWorkoutId !== null}
         onClose={handleCloseWorkoutModal}
+        onSave={handleSaveWorkout}
       />
     </div>
   );
