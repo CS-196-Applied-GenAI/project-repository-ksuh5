@@ -1,8 +1,7 @@
 /**
  * Pure helpers for race state logic.
  *
- * These are all side-effect-free so they can be tested in Node
- * without a DOM or Dexie.
+ * All functions are side-effect-free — safe to unit-test in Node.
  */
 
 /** Canonical race status values (mirrors frontspec.md). */
@@ -28,11 +27,7 @@ export function displayRaceStatus(status) {
 }
 
 /**
- * Returns the single active race from an array of races,
- * or `null` if none exist.
- *
- * If multiple races somehow have status "active" (data error),
- * the first one encountered is returned.
+ * Returns the single active race from an array of races, or `null`.
  *
  * @param {Array<{id: string, status: string}>} races
  * @returns {{id: string, status: string} | null}
@@ -54,7 +49,6 @@ export function getActiveRaceId(races) {
 
 /**
  * Returns only the races with status "active".
- * Used to populate the RaceBar dropdown.
  *
  * @param {Array<{id: string, status: string}>} races
  * @returns {Array<{id: string, status: string}>}
@@ -64,7 +58,8 @@ export function getSelectableRaces(races) {
 }
 
 /**
- * Formats a race's date range as a short string, e.g. "Mar 10 – May 1, 2026".
+ * Formats a race's date range as a short string.
+ * e.g. "Mar 10, 2026 – May 1, 2026"
  *
  * @param {{ startDate: string, endDate: string }} race
  * @returns {string}
@@ -80,4 +75,43 @@ export function formatRaceDateRange(race) {
     });
   };
   return `${fmt(race.startDate)} – ${fmt(race.endDate)}`;
+}
+
+/**
+ * Constructs a new Race object ready to be persisted.
+ *
+ * Pure function: accepts an optional `now` ISO string and `id` so tests
+ * can inject deterministic values without mocking globals.
+ *
+ * @param {{
+ *   name: string,
+ *   startDate: string,
+ *   endDate: string,
+ * }} fields
+ * @param {{
+ *   id?: string,
+ *   now?: string,
+ * }} [overrides]  Inject id / timestamp for tests.
+ * @returns {{
+ *   id: string,
+ *   name: string,
+ *   startDate: string,
+ *   endDate: string,
+ *   status: 'active',
+ *   createdAt: string,
+ *   updatedAt: string,
+ * }}
+ */
+export function makeRace(fields, overrides = {}) {
+  const id  = overrides.id  ?? crypto.randomUUID();
+  const now = overrides.now ?? new Date().toISOString();
+  return {
+    id,
+    name:      fields.name.trim(),
+    startDate: fields.startDate,
+    endDate:   fields.endDate,
+    status:    RACE_STATUS.ACTIVE,
+    createdAt: now,
+    updatedAt: now,
+  };
 }

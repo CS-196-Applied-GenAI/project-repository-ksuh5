@@ -6,6 +6,7 @@ import {
   getSelectableRaces,
   displayRaceStatus,
   formatRaceDateRange,
+  makeRace,
 } from './raceHelpers.js';
 
 // ── fixtures ──────────────────────────────────────────────
@@ -18,8 +19,7 @@ const completed = { id: 'r-completed', name: 'Old Race',    status: 'completed' 
 
 describe('getActiveRace', () => {
   it('returns the active race when exactly one exists', () => {
-    const result = getActiveRace([archived, active, completed]);
-    expect(result).toEqual(active);
+    expect(getActiveRace([archived, active, completed])).toEqual(active);
   });
 
   it('returns null when no races are active', () => {
@@ -30,10 +30,9 @@ describe('getActiveRace', () => {
     expect(getActiveRace([])).toBeNull();
   });
 
-  it('returns the first active if multiple active (data error case)', () => {
+  it('returns the first active if multiple active (data-error case)', () => {
     const active2 = { id: 'r-active-2', status: 'active' };
-    const result = getActiveRace([active, active2]);
-    expect(result?.id).toBe('r-active');
+    expect(getActiveRace([active, active2])?.id).toBe('r-active');
   });
 });
 
@@ -105,7 +104,6 @@ describe('formatRaceDateRange', () => {
     const result = formatRaceDateRange(race);
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
-    // Should include the year
     expect(result).toContain('2026');
   });
 
@@ -115,5 +113,58 @@ describe('formatRaceDateRange', () => {
 
   it('returns empty string when dates are missing', () => {
     expect(formatRaceDateRange({ startDate: '', endDate: '' })).toBe('');
+  });
+});
+
+// ── makeRace ──────────────────────────────────────────────
+
+describe('makeRace', () => {
+  const FIELDS = { name: 'Spring 5K', startDate: '2026-03-10', endDate: '2026-05-01' };
+  const FIXED  = { id: 'test-id-123', now: '2026-03-03T10:00:00.000Z' };
+
+  it('returns an object with the given name, startDate, endDate', () => {
+    const race = makeRace(FIELDS, FIXED);
+    expect(race.name).toBe('Spring 5K');
+    expect(race.startDate).toBe('2026-03-10');
+    expect(race.endDate).toBe('2026-05-01');
+  });
+
+  it('status is always "active"', () => {
+    expect(makeRace(FIELDS, FIXED).status).toBe('active');
+  });
+
+  it('has a non-empty id when no override given', () => {
+    const race = makeRace(FIELDS);
+    expect(typeof race.id).toBe('string');
+    expect(race.id.length).toBeGreaterThan(0);
+  });
+
+  it('uses injected id when provided', () => {
+    expect(makeRace(FIELDS, FIXED).id).toBe('test-id-123');
+  });
+
+  it('createdAt equals the injected now string', () => {
+    expect(makeRace(FIELDS, FIXED).createdAt).toBe('2026-03-03T10:00:00.000Z');
+  });
+
+  it('updatedAt equals createdAt on creation', () => {
+    const race = makeRace(FIELDS, FIXED);
+    expect(race.updatedAt).toBe(race.createdAt);
+  });
+
+  it('createdAt is a valid ISO string when no override given', () => {
+    const race = makeRace(FIELDS);
+    expect(() => new Date(race.createdAt).toISOString()).not.toThrow();
+  });
+
+  it('trims whitespace from name', () => {
+    const race = makeRace({ ...FIELDS, name: '  Spring 5K  ' }, FIXED);
+    expect(race.name).toBe('Spring 5K');
+  });
+
+  it('two calls without id override produce different ids', () => {
+    const a = makeRace(FIELDS);
+    const b = makeRace(FIELDS);
+    expect(a.id).not.toBe(b.id);
   });
 });

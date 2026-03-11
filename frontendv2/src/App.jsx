@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useAppData } from './hooks/useAppData.js';
-import { seedSampleData } from './db/seed.js';
-import { formatCount } from './utils/formatters.js';
+import { useAppData }          from './hooks/useAppData.js';
+import { seedSampleData }      from './db/seed.js';
+import { formatCount }         from './utils/formatters.js';
 import { displayWorkoutType, isQualityType } from './domain/workoutTypes.js';
-import { getActiveRaceId } from './domain/raceHelpers.js';
-import RaceBar from './components/RaceBar.jsx';
+import { getActiveRaceId, makeRace }          from './domain/raceHelpers.js';
+import { createRaceWithOptionalWorkout }      from './db/mutations.js';
+import RaceBar   from './components/RaceBar.jsx';
+import RaceModal from './components/RaceModal.jsx';
 import './App.css';
 
 export default function App() {
@@ -12,27 +14,34 @@ export default function App() {
     useAppData();
 
   // ── Active race selection ──────────────────────────────
-  // Derived from Dexie on every load; no separate settings table needed.
   const [activeRaceId, setActiveRaceId] = useState(null);
 
-  // Auto-select when data loads: pick the one active race if it exists.
   useEffect(() => {
     if (!loading) {
-      const id = getActiveRaceId(races);
-      setActiveRaceId(id);
+      setActiveRaceId(getActiveRaceId(races));
     }
   }, [loading, races]);
 
-  const activeRace =
-    races.find((r) => r.id === activeRaceId) ?? null;
-
+  const activeRace = races.find((r) => r.id === activeRaceId) ?? null;
   const activePlannedWorkouts = activeRace
     ? plannedWorkouts.filter((pw) => pw.raceId === activeRace.id)
     : [];
 
+  // ── Race modal ─────────────────────────────────────────
+  const [modalOpen, setModalOpen] = useState(false);
+
+  async function handleCreateRace({ name, startDate, endDate, seedWorkout }) {
+    // Step 5 will add the "archive previous active" prompt here.
+    // For now we just create the race directly.
+    const race = makeRace({ name, startDate, endDate });
+    await createRaceWithOptionalWorkout(race, seedWorkout);
+    await reload();
+    setActiveRaceId(race.id);
+  }
+
   // ── Seed ──────────────────────────────────────────────
-  const [seeding, setSeeding] = useState(false);
-  const [seedMsg, setSeedMsg] = useState('');
+  const [seeding, setSeeding]   = useState(false);
+  const [seedMsg, setSeedMsg]   = useState('');
 
   async function handleSeed() {
     setSeeding(true);
@@ -53,7 +62,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 3 — RaceBar ✓</p>
+        <p className="app-status">Step 4 — Create race ✓</p>
       </header>
 
       <main className="app-main">
@@ -64,6 +73,7 @@ export default function App() {
               races={races}
               activeRaceId={activeRaceId}
               onSelect={setActiveRaceId}
+              onNewRace={() => setModalOpen(true)}
             />
           </section>
         )}
@@ -118,12 +128,7 @@ export default function App() {
                       <span className="workout-title">{pw.title}</span>
                     )}
                     {pw.locked && (
-                      <span
-                        className="workout-locked"
-                        title="Locked — recalc will not change this"
-                      >
-                        🔒
-                      </span>
+                      <span className="workout-locked" title="Locked">🔒</span>
                     )}
                   </li>
                 ))}
@@ -132,16 +137,13 @@ export default function App() {
           </section>
         )}
 
-        {/* ── All races (debug view) ────────────────── */}
+        {/* ── All races (debug) ────────────────────── */}
         {!loading && races.length > 0 && (
           <section className="all-races-section">
             <h2>All races ({races.length})</h2>
             <ul className="race-list">
               {races.map((r) => (
-                <li
-                  key={r.id}
-                  className={`race-row race-row--${r.status}`}
-                >
+                <li key={r.id} className={`race-row race-row--${r.status}`}>
                   <span className="race-row__name">{r.name}</span>
                   <span className="race-row__dates">
                     {r.startDate} → {r.endDate}
@@ -158,28 +160,26 @@ export default function App() {
         {/* ── Dev tools ────────────────────────────── */}
         <section className="seed-section">
           <h2>Dev tools</h2>
-          <button
-            className="btn-seed"
-            onClick={handleSeed}
-            disabled={seeding}
-          >
+          <button className="btn-seed" onClick={handleSeed} disabled={seeding}>
             {seeding ? 'Seeding…' : '🌱 Seed sample data'}
           </button>
           {seedMsg && (
-            <p
-              className={
-                seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'
-              }
-            >
+            <p className={seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'}>
               {seedMsg}
             </p>
           )}
           <p className="hint">
-            Seeds: 1 active race (Spring 5K) + 1 archived race (Winter Race)
-            + 1 planned workout + 1 unplanned log.
+            Seeds: 1 active race + 1 archived race + 1 planned workout + 1 log.
           </p>
         </section>
       </main>
+
+      {/* ── Race creation modal (rendered outside main flow) ── */}
+      <RaceModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={handleCreateRace}
+      />
     </div>
   );
 }
