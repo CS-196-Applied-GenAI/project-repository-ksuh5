@@ -1,6 +1,6 @@
 /* ── Layout ──────────────────────────────────────────────── */
 .app {
-  max-width: 860px; /* widened slightly to give calendar room */
+  max-width: 860px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem 3rem;
   font-family: system-ui, sans-serif;
@@ -12,21 +12,10 @@
   margin-bottom: 1.5rem;
 }
 
-.app-header h1 {
-  margin: 0 0 0.2rem 0;
-  font-size: 1.75rem;
-  color: #1a202c;
-}
+.app-header h1 { margin: 0 0 0.2rem 0; font-size: 1.75rem; color: #1a202c; }
+.app-status    { margin: 0; font-size: 0.85rem; color: #38a169; }
 
-.app-status {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #38a169;
-}
-
-.app-main section {
-  margin-bottom: 2rem;
-}
+.app-main section { margin-bottom: 2rem; }
 
 .app-main h2 {
   font-size: 0.85rem;
@@ -37,116 +26,57 @@
   letter-spacing: 0.07em;
 }
 
-.section-hint {
-  font-weight: 400;
-  color: #a0aec0;
-  text-transform: none;
-  letter-spacing: 0;
+.section-hint { font-weight: 400; color: #a0aec0; text-transform: none; letter-spacing: 0; }
+
+/* ── Calendar section ─────────────────────────────────────── */
+.calendar-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
 }
 
-/* ── RaceBar section ─────────────────────────────────────── */
-.racebar-section { /* inherits section margin */ }
-
-/* ── Calendar section ────────────────────────────────────── */
-.calendar-section { /* inherits section margin */ }
+/* Remove the default bottom margin from h2 inside header row */
+.calendar-section__header h2 { margin-bottom: 0; }
 
 /* ── Counts ──────────────────────────────────────────────── */
 .counts-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  list-style: none; padding: 0; margin: 0;
+  display: flex; gap: 1rem; flex-wrap: wrap;
 }
 
 .counts-list li {
-  background: #edf2f7;
-  border-radius: 8px;
-  padding: 0.6rem 1rem;
-  font-size: 0.88rem;
-  color: #4a5568;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 100px;
+  background: #edf2f7; border-radius: 8px; padding: 0.6rem 1rem;
+  font-size: 0.88rem; color: #4a5568;
+  display: flex; flex-direction: column; align-items: center; min-width: 100px;
 }
 
-.count-number {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2b6cb0;
-  line-height: 1;
-  margin-bottom: 0.25rem;
-}
+.count-number { font-size: 1.5rem; font-weight: 700; color: #2b6cb0; line-height: 1; margin-bottom: 0.25rem; }
 
-/* ── Planned workout list (debug, below calendar) ────────── */
-.race-name { color: #2b6cb0; font-weight: 600; }
+/* ── Workout cards (debug list) ──────────────────────────── */
+.race-name  { color: #2b6cb0; font-weight: 600; }
 
-.workout-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
+.workout-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
 
 .workout-card {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 0.45rem 0.75rem;
-  font-size: 0.88rem;
-  color: #2d3748;
+  display: flex; align-items: center; gap: 0.7rem;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 0.45rem 0.75rem; font-size: 0.88rem; color: #2d3748;
 }
 
-.workout-date {
-  font-variant-numeric: tabular-nums;
-  color: #718096;
-  font-size: 0.8rem;
-  min-width: 5.5rem;
-}
-
-.workout-type-badge {
-  padding: 0.18rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: #e2e8f0;
-  color: #4a5568;
-}
-
-.workout-type-badge.quality {
-  background: #fefcbf;
-  color: #744210;
-}
-
-.workout-title  { color: #4a5568; flex: 1; font-size: 0.88rem; }
-.workout-locked { font-size: 0.8rem; margin-left: auto; }
+.workout-date        { font-variant-numeric: tabular-nums; color: #718096; font-size: 0.8rem; min-width: 5.5rem; }
+.workout-type-badge  { padding: 0.18rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: #e2e8f0; color: #4a5568; }
+.workout-type-badge.quality { background: #fefcbf; color: #744210; }
+.workout-title       { color: #4a5568; flex: 1; font-size: 0.88rem; }
+.workout-locked      { font-size: 0.8rem; margin-left: auto; }
 
 /* ── All races debug list ────────────────────────────────── */
-.race-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
+.race-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
 
 .race-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.45rem 0.75rem;
-  border-radius: 7px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  font-size: 0.88rem;
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.45rem 0.75rem; border-radius: 7px; border: 1px solid #e2e8f0;
+  background: #fff; font-size: 0.88rem;
 }
 
 .race-row--active    { border-color: #bee3f8; background: #ebf8ff; }
@@ -157,35 +87,21 @@
 .race-row__dates { font-size: 0.8rem; color: #718096; flex: 1; }
 
 .race-row__status {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-  letter-spacing: 0.05em;
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  padding: 0.15rem 0.45rem; border-radius: 999px; letter-spacing: 0.05em;
 }
 
 .race-row__status--active    { background: #c6f6d5; color: #276749; }
 .race-row__status--archived  { background: #e2e8f0; color: #4a5568; }
 .race-row__status--completed { background: #fefcbf; color: #744210; }
 
-/* ── Seed / dev tools ────────────────────────────────────── */
-.btn-seed {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  background: #2b6cb0;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
+/* ── Dev tools ───────────────────────────────────────────── */
+.btn-seed { padding: 0.5rem 1rem; font-size: 0.9rem; background: #2b6cb0; color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
 .btn-seed:hover:not(:disabled) { background: #2c5282; }
 .btn-seed:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.seed-ok  { margin-top: 0.5rem; color: #38a169; font-size: 0.88rem; }
-.hint     { font-size: 0.82rem; color: #718096; margin-top: 0.4rem; }
+.seed-ok { margin-top: 0.5rem; color: #38a169; font-size: 0.88rem; }
+.hint    { font-size: 0.82rem; color: #718096; margin-top: 0.4rem; }
 
 /* ── Shared states ───────────────────────────────────────── */
 .loading { color: #718096; font-style: italic; }

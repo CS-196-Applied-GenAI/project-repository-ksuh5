@@ -70,45 +70,62 @@ export function getWeekDays(ymd) {
 }
 
 /**
- * Returns a 2-D array of YYYY-MM-DD strings for the month grid
- * containing `ymd`. Each inner array is a Mon–Sun week (7 elements).
- * Leading/trailing days from adjacent months fill the grid.
- * @param {string} ymd
- * @returns {string[][]}
+ * Returns a flat array of YYYY-MM-DD strings representing the full
+ * month grid for the month containing `ymd`.
+ *
+ * - Length is always a multiple of 7 (complete weeks).
+ * - Grid starts on the Monday on or before the 1st of the month.
+ * - Grid ends on the Sunday on or after the last day of the month.
+ * - Leading days from the previous month and trailing days from the
+ *   next month are included to fill complete weeks.
+ * - Returns 35 (5 weeks) or 42 (6 weeks) days depending on the month.
+ *
+ * @param {string} ymd  Any date within the target month.
+ * @returns {string[]}
  */
-export function getMonthGrid(ymd) {
-  const ref = parseYMD(ymd);
+export function getMonthGridDays(ymd) {
+  const ref   = parseYMD(ymd);
   const year  = ref.getFullYear();
-  const month = ref.getMonth();
+  const month = ref.getMonth(); // 0-indexed
 
   const firstOfMonth = new Date(year, month, 1);
   const lastOfMonth  = new Date(year, month + 1, 0);
 
-  const gridStart    = startOfWeek(formatYMD(firstOfMonth));
-  const lastDaySlot  = (lastOfMonth.getDay() + 6) % 7; // Mon=0
+  // Start: Monday on or before the 1st
+  const gridStart = startOfWeek(formatYMD(firstOfMonth));
+
+  // End: Sunday on or after the last day
+  const lastDaySlot  = (lastOfMonth.getDay() + 6) % 7; // Mon=0 … Sun=6
   const daysToSunday = lastDaySlot === 6 ? 0 : 6 - lastDaySlot;
   const gridEnd      = addDays(formatYMD(lastOfMonth), daysToSunday);
 
-  const weeks = [];
+  const days = [];
   let current = gridStart;
   while (current <= gridEnd) {
-    const week = [];
-    for (let i = 0; i < 7; i++) {
-      week.push(current);
-      current = addDays(current, 1);
-    }
-    weeks.push(week);
+    days.push(current);
+    current = addDays(current, 1);
+  }
+  return days;
+}
+
+/**
+ * Returns a 2-D array of YYYY-MM-DD strings (weeks × 7 days) for the
+ * month grid. Thin wrapper around getMonthGridDays.
+ * @param {string} ymd
+ * @returns {string[][]}
+ */
+export function getMonthGrid(ymd) {
+  const flat = getMonthGridDays(ymd);
+  const weeks = [];
+  for (let i = 0; i < flat.length; i += 7) {
+    weeks.push(flat.slice(i, i + 7));
   }
   return weeks;
 }
 
 /**
  * Groups an array of PlannedWorkout objects by their `date` field.
- *
- * Returns a plain object: { [YYYY-MM-DD]: PlannedWorkout[] }
- * Days with no workouts are omitted from the map.
- * The order of workouts within each bucket matches insertion order.
- *
+ * Returns { [YYYY-MM-DD]: PlannedWorkout[] }.
  * @param {Array<{ id: string, date: string }>} plannedWorkouts
  * @returns {Record<string, Array<{ id: string, date: string }>>}
  */
@@ -121,16 +138,51 @@ export function groupPlannedByDate(plannedWorkouts) {
   return map;
 }
 
-/** Short day-of-week label (Mon, Tue, …) for a YYYY-MM-DD string. */
+/** Short day-of-week label ("Mon", "Tue", …) for a YYYY-MM-DD string. */
 export function shortDayLabel(ymd) {
   return parseYMD(ymd).toLocaleDateString('en-US', { weekday: 'short' });
 }
 
-/** Short month+day label (Mar 10) for a YYYY-MM-DD string. */
+/** "Mar 10" style label for a YYYY-MM-DD string. */
 export function shortDateLabel(ymd) {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('en-US', {
     month: 'short',
     day:   'numeric',
+  });
+}
+
+/**
+ * Returns the first day of the month for a YYYY-MM-DD string.
+ * @param {string} ymd
+ * @returns {string}
+ */
+export function startOfMonth(ymd) {
+  const [y, m] = ymd.split('-');
+  return `${y}-${m}-01`;
+}
+
+/**
+ * Returns the first day of the next month.
+ * @param {string} ymd
+ * @returns {string}
+ */
+export function addMonths(ymd, n) {
+  const ref = parseYMD(ymd);
+  ref.setDate(1); // pin to 1st to avoid month-length edge cases
+  ref.setMonth(ref.getMonth() + n);
+  return formatYMD(ref);
+}
+
+/**
+ * "March 2026" style label for a YYYY-MM-DD string.
+ * @param {string} ymd
+ * @returns {string}
+ */
+export function monthYearLabel(ymd) {
+  const [y, m] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year:  'numeric',
   });
 }

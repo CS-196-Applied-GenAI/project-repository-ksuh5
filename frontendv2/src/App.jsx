@@ -4,12 +4,16 @@ import { seedSampleData }       from './db/seed.js';
 import { formatCount }          from './utils/formatters.js';
 import { displayWorkoutType, isQualityType }        from './domain/workoutTypes.js';
 import { getActiveRaceId, getActiveRace, makeRace } from './domain/raceHelpers.js';
-import { today, addDays }                           from './domain/calendarHelpers.js';
+import {
+  today, addDays, startOfMonth, addMonths,
+} from './domain/calendarHelpers.js';
 import { createRaceEnforcingSingleActive }          from './db/mutations.js';
 import RaceBar       from './components/RaceBar.jsx';
 import RaceModal     from './components/RaceModal.jsx';
 import ConflictModal from './components/ConflictModal.jsx';
 import WeekCalendar  from './components/WeekCalendar.jsx';
+import MonthCalendar from './components/MonthCalendar.jsx';
+import CalendarToggle from './components/CalendarToggle.jsx';
 import './App.css';
 
 export default function App() {
@@ -28,19 +32,27 @@ export default function App() {
     ? plannedWorkouts.filter((pw) => pw.raceId === activeRace.id)
     : [];
 
-  // ── Week navigation ───────────────────────────────────
-  // weekAnchor: any date inside the week we want to show.
-  // Initialised to activeRace.startDate when a race loads,
-  // otherwise today.
-  const [weekAnchor, setWeekAnchor] = useState(today());
+  // ── Calendar view toggle ──────────────────────────────
+  const [calView, setCalView] = useState('week'); // 'week' | 'month'
 
-  // Sync weekAnchor to active race start date whenever the race changes
+  // ── Shared anchor — one date that drives both views ───
+  // weekAnchor  : any date inside the displayed week
+  // monthAnchor : any date inside the displayed month
+  // We keep a single `anchor` and derive both from it.
+  const [anchor, setAnchor] = useState(today());
+
+  // Sync anchor to active race start date when race changes
   useEffect(() => {
-    setWeekAnchor(activeRace ? activeRace.startDate : today());
-  }, [activeRace?.id]);   // only re-run when the race *identity* changes
+    setAnchor(activeRace ? activeRace.startDate : today());
+  }, [activeRace?.id]);
 
-  const handlePrevWeek = () => setWeekAnchor((a) => addDays(a, -7));
-  const handleNextWeek = () => setWeekAnchor((a) => addDays(a, 7));
+  // Week navigation
+  const handlePrevWeek  = () => setAnchor((a) => addDays(a, -7));
+  const handleNextWeek  = () => setAnchor((a) => addDays(a, 7));
+
+  // Month navigation — move anchor to the 1st of the target month
+  const handlePrevMonth = () => setAnchor((a) => addMonths(startOfMonth(a), -1));
+  const handleNextMonth = () => setAnchor((a) => addMonths(startOfMonth(a), 1));
 
   // ── Race creation state machine ───────────────────────
   const [raceModalOpen,     setRaceModalOpen]     = useState(false);
@@ -50,13 +62,8 @@ export default function App() {
 
   async function handleRaceModalSave(fields) {
     const existingActive = getActiveRace(races);
-    if (!existingActive) {
-      await doCreateRace(fields, null);
-    } else {
-      setPendingRace(fields);
-      setRaceModalOpen(false);
-      setConflictModalOpen(true);
-    }
+    if (!existingActive) { await doCreateRace(fields, null); }
+    else { setPendingRace(fields); setRaceModalOpen(false); setConflictModalOpen(true); }
   }
 
   async function handleConflictDecision(decision) {
@@ -71,10 +78,7 @@ export default function App() {
       const newRace = makeRace({ name: fields.name, startDate: fields.startDate, endDate: fields.endDate });
       const result  = await createRaceEnforcingSingleActive({ newRace, decision, seedWorkout: fields.seedWorkout });
       if (!result.cancelled) { await reload(); setActiveRaceId(newRace.id); }
-    } finally {
-      setCreating(false);
-      setRaceModalOpen(false);
-    }
+    } finally { setCreating(false); setRaceModalOpen(false); }
   }
 
   // ── Seed ──────────────────────────────────────────────
@@ -83,12 +87,9 @@ export default function App() {
 
   async function handleSeed() {
     setSeeding(true); setSeedMsg('');
-    try {
-      await seedSampleData(); await reload();
-      setSeedMsg('Sample data seeded ✓');
-    } catch (err) {
-      setSeedMsg(`Seed failed: ${err.message}`);
-    } finally { setSeeding(false); }
+    try { await seedSampleData(); await reload(); setSeedMsg('Sample data seeded ✓'); }
+    catch (err) { setSeedMsg(`Seed failed: ${err.message}`); }
+    finally { setSeeding(false); }
   }
 
   // ── Render ────────────────────────────────────────────
@@ -96,7 +97,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 6 — Week calendar ✓</p>
+        <p className="app-status">Step 7 — Month view + toggle ✓</p>
       </header>
 
       <main className="app-main">
@@ -112,24 +113,41 @@ export default function App() {
           </section>
         )}
 
-        {/* ── Week calendar ─────────────────────────── */}
+        {/* ── Calendar (week or month) ───────────────── */}
         {!loading && (
           <section className="calendar-section">
-            <h2>
-              Week view
-              {!activeRace && (
-                <span className="section-hint"> — no active race</span>
-              )}
-            </h2>
-            <WeekCalendar
-              weekAnchor={weekAnchor}
-              plannedWorkouts={activePlannedWorkouts}
-              todayYMD={today()}
-              raceStartDate={activeRace?.startDate ?? null}
-              raceEndDate={activeRace?.endDate ?? null}
-              onPrevWeek={handlePrevWeek}
-              onNextWeek={handleNextWeek}
-            />
+            {/* Section header row: title + toggle */}
+            <div className="calendar-section__header">
+              <h2>
+                Calendar
+                {!activeRace && (
+                  <span className="section-hint"> — no active race</span>
+                )}
+              </h2>
+              <CalendarToggle view={calView} onChange={setCalView} />
+            </div>
+
+            {calView === 'week' ? (
+              <WeekCalendar
+                weekAnchor={anchor}
+                plannedWorkouts={activePlannedWorkouts}
+                todayYMD={today()}
+                raceStartDate={activeRace?.startDate ?? null}
+                raceEndDate={activeRace?.endDate ?? null}
+                onPrevWeek={handlePrevWeek}
+                onNextWeek={handleNextWeek}
+              />
+            ) : (
+              <MonthCalendar
+                monthAnchor={anchor}
+                plannedWorkouts={activePlannedWorkouts}
+                todayYMD={today()}
+                raceStartDate={activeRace?.startDate ?? null}
+                raceEndDate={activeRace?.endDate ?? null}
+                onPrevMonth={handlePrevMonth}
+                onNextMonth={handleNextMonth}
+              />
+            )}
           </section>
         )}
 
