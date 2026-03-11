@@ -2,18 +2,16 @@ import { useState, useEffect }  from 'react';
 import { useAppData }           from './hooks/useAppData.js';
 import { seedSampleData }       from './db/seed.js';
 import { formatCount }          from './utils/formatters.js';
-import { displayWorkoutType, isQualityType }        from './domain/workoutTypes.js';
 import { getActiveRaceId, getActiveRace, makeRace } from './domain/raceHelpers.js';
-import {
-  today, addDays, startOfMonth, addMonths,
-} from './domain/calendarHelpers.js';
-import { createRaceEnforcingSingleActive }          from './db/mutations.js';
-import RaceBar       from './components/RaceBar.jsx';
-import RaceModal     from './components/RaceModal.jsx';
-import ConflictModal from './components/ConflictModal.jsx';
-import WeekCalendar  from './components/WeekCalendar.jsx';
-import MonthCalendar from './components/MonthCalendar.jsx';
-import CalendarToggle from './components/CalendarToggle.jsx';
+import { today, addDays, startOfMonth, addMonths }  from './domain/calendarHelpers.js';
+import { createRaceEnforcingSingleActive }           from './db/mutations.js';
+import RaceBar              from './components/RaceBar.jsx';
+import RaceModal            from './components/RaceModal.jsx';
+import ConflictModal        from './components/ConflictModal.jsx';
+import WeekCalendar         from './components/WeekCalendar.jsx';
+import MonthCalendar        from './components/MonthCalendar.jsx';
+import CalendarToggle       from './components/CalendarToggle.jsx';
+import PlannedWorkoutModal  from './components/PlannedWorkoutModal.jsx';
 import './App.css';
 
 export default function App() {
@@ -32,27 +30,32 @@ export default function App() {
     ? plannedWorkouts.filter((pw) => pw.raceId === activeRace.id)
     : [];
 
-  // ── Calendar view toggle ──────────────────────────────
-  const [calView, setCalView] = useState('week'); // 'week' | 'month'
+  // ── Calendar view + anchor ────────────────────────────
+  const [calView, setCalView] = useState('week');
+  const [anchor,  setAnchor]  = useState(today());
 
-  // ── Shared anchor — one date that drives both views ───
-  // weekAnchor  : any date inside the displayed week
-  // monthAnchor : any date inside the displayed month
-  // We keep a single `anchor` and derive both from it.
-  const [anchor, setAnchor] = useState(today());
-
-  // Sync anchor to active race start date when race changes
   useEffect(() => {
     setAnchor(activeRace ? activeRace.startDate : today());
   }, [activeRace?.id]);
 
-  // Week navigation
   const handlePrevWeek  = () => setAnchor((a) => addDays(a, -7));
   const handleNextWeek  = () => setAnchor((a) => addDays(a, 7));
-
-  // Month navigation — move anchor to the 1st of the target month
   const handlePrevMonth = () => setAnchor((a) => addMonths(startOfMonth(a), -1));
   const handleNextMonth = () => setAnchor((a) => addMonths(startOfMonth(a), 1));
+
+  // ── Planned workout selection ─────────────────────────
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState(null);
+
+  const selectedWorkout =
+    activePlannedWorkouts.find((pw) => pw.id === selectedWorkoutId) ?? null;
+
+  function handleSelectWorkout(workout) {
+    setSelectedWorkoutId(workout.id);
+  }
+
+  function handleCloseWorkoutModal() {
+    setSelectedWorkoutId(null);
+  }
 
   // ── Race creation state machine ───────────────────────
   const [raceModalOpen,     setRaceModalOpen]     = useState(false);
@@ -97,7 +100,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 7 — Month view + toggle ✓</p>
+        <p className="app-status">Step 8 — Planned workout selection ✓</p>
       </header>
 
       <main className="app-main">
@@ -113,16 +116,13 @@ export default function App() {
           </section>
         )}
 
-        {/* ── Calendar (week or month) ───────────────── */}
+        {/* ── Calendar ──────────────────────────────── */}
         {!loading && (
           <section className="calendar-section">
-            {/* Section header row: title + toggle */}
             <div className="calendar-section__header">
               <h2>
                 Calendar
-                {!activeRace && (
-                  <span className="section-hint"> — no active race</span>
-                )}
+                {!activeRace && <span className="section-hint"> — no active race</span>}
               </h2>
               <CalendarToggle view={calView} onChange={setCalView} />
             </div>
@@ -136,6 +136,7 @@ export default function App() {
                 raceEndDate={activeRace?.endDate ?? null}
                 onPrevWeek={handlePrevWeek}
                 onNextWeek={handleNextWeek}
+                onSelectWorkout={handleSelectWorkout}
               />
             ) : (
               <MonthCalendar
@@ -146,6 +147,7 @@ export default function App() {
                 raceEndDate={activeRace?.endDate ?? null}
                 onPrevMonth={handlePrevMonth}
                 onNextMonth={handleNextMonth}
+                onSelectWorkout={handleSelectWorkout}
               />
             )}
           </section>
@@ -196,6 +198,7 @@ export default function App() {
         </section>
       </main>
 
+      {/* ── Modals ───────────────────────────────── */}
       <RaceModal
         isOpen={raceModalOpen}
         onClose={() => setRaceModalOpen(false)}
@@ -205,6 +208,11 @@ export default function App() {
         isOpen={conflictModalOpen}
         existingRaceName={getActiveRace(races)?.name ?? ''}
         onDecide={handleConflictDecision}
+      />
+      <PlannedWorkoutModal
+        workout={selectedWorkout}
+        isOpen={selectedWorkoutId !== null}
+        onClose={handleCloseWorkoutModal}
       />
     </div>
   );

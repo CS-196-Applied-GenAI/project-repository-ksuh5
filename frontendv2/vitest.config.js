@@ -1,8 +1,12 @@
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  plugins: [react()],
   test: {
-    // run in Node (no DOM needed for pure unit tests in Step 1)
-    environment: 'node',
+    // jsdom lets component tests render React without a browser
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test-setup.js'],
   },
 });

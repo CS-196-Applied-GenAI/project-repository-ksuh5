@@ -1,0 +1,77 @@
+/* ── Base card ───────────────────────────────────────────── */
+.pw-card {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.22rem 0.45rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #edf2f7;
+  color: #2d3748;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.35;
+  transition: background 0.12s, box-shadow 0.12s;
+  overflow: hidden;
+}
+
+.pw-card:hover {
+  background: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.pw-card:focus-visible {
+  outline: 2px solid #4299e1;
+  outline-offset: 1px;
+}
+
+/* ── Quality type ────────────────────────────────────────── */
+.pw-card--quality {
+  background: #fefcbf;
+  color: #744210;
+}
+
+.pw-card--quality:hover {
+  background: #faf089;
+}
+
+/* ── Locked ──────────────────────────────────────────────── */
+.pw-card--locked {
+  border-left: 2px solid #a0aec0;
+}
+
+/* ── Compact (month view) ────────────────────────────────── */
+.pw-card--compact {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+}
+
+/* ── Inner elements ──────────────────────────────────────── */
+.pw-card__type {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pw-card__meta {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: #718096;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pw-card--quality .pw-card__meta {
+  color: #975a16;
+}
+
+.pw-card__lock {
+  font-size: 0.6rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}

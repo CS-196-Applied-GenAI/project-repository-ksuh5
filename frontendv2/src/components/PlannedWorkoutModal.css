@@ -1,0 +1,139 @@
+/* Reuses .modal-backdrop, .modal-box, .modal-header,
+   .modal-close, .modal-title, .btn from RaceModal.css.
+   This file adds only PlannedWorkoutModal-specific rules.  */
+
+/* ── Box sizing ──────────────────────────────────────────── */
+.pw-modal-box {
+  max-width: 480px;
+}
+
+/* ── Title row (badge + name) ────────────────────────────── */
+.pw-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.pw-modal-type-badge {
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #4a5568;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pw-modal-type-badge--quality {
+  background: #fefcbf;
+  color: #744210;
+}
+
+/* ── Body ────────────────────────────────────────────────── */
+.pw-modal-body {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Meta row (date + locked badge) ─────────────────────── */
+.pw-modal-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pw-modal-date {
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  color: #718096;
+}
+
+.pw-modal-locked-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #e2e8f0;
+  color: #4a5568;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+/* ── Targets grid ────────────────────────────────────────── */
+.pw-modal-targets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.pw-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.pw-field__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #a0aec0;
+}
+
+.pw-field__value {
+  font-size: 0.92rem;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+/* ── Section ─────────────────────────────────────────────── */
+.pw-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pw-modal-section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #a0aec0;
+}
+
+.pw-modal-structure,
+.pw-modal-notes {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #4a5568;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+/* ── Logs placeholder ────────────────────────────────────── */
+.pw-modal-logs-placeholder {
+  border: 1px dashed #cbd5e0;
+  border-radius: 7px;
+  padding: 0.65rem 0.75rem;
+}
+
+.pw-modal-empty-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #a0aec0;
+  font-style: italic;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+.pw-modal-footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Reuse .btn .btn-cancel from RaceModal.css */
