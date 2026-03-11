@@ -1,6 +1,6 @@
 /* ── Layout ──────────────────────────────────────────────── */
 .app {
-  max-width: 720px;
+  max-width: 860px; /* widened slightly to give calendar room */
   margin: 0 auto;
   padding: 1.25rem 1.5rem 3rem;
   font-family: system-ui, sans-serif;
@@ -37,8 +37,18 @@
   letter-spacing: 0.07em;
 }
 
-/* ── RaceBar section — no extra chrome needed ────────────── */
+.section-hint {
+  font-weight: 400;
+  color: #a0aec0;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── RaceBar section ─────────────────────────────────────── */
 .racebar-section { /* inherits section margin */ }
+
+/* ── Calendar section ────────────────────────────────────── */
+.calendar-section { /* inherits section margin */ }
 
 /* ── Counts ──────────────────────────────────────────────── */
 .counts-list {
@@ -70,7 +80,7 @@
   margin-bottom: 0.25rem;
 }
 
-/* ── Planned workout list ────────────────────────────────── */
+/* ── Planned workout list (debug, below calendar) ────────── */
 .race-name { color: #2b6cb0; font-weight: 600; }
 
 .workout-list {
@@ -115,7 +125,7 @@
   color: #744210;
 }
 
-.workout-title { color: #4a5568; flex: 1; font-size: 0.88rem; }
+.workout-title  { color: #4a5568; flex: 1; font-size: 0.88rem; }
 .workout-locked { font-size: 0.8rem; margin-left: auto; }
 
 /* ── All races debug list ────────────────────────────────── */
