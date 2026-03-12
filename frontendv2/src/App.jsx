@@ -157,7 +157,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 11 — Workout logs in modal ✓</p>
+        <p className="app-status">Step 12 — Add logs ✓</p>
       </header>
 
       <main className="app-main">
@@ -256,10 +256,8 @@ export default function App() {
           <button className="btn-seed" onClick={handleSeed} disabled={seeding || creating}>
             {seeding ? 'Seeding…' : '🌱 Seed sample data'}
           </button>
-          {seedMsg && (
-            <p className={seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'}>{seedMsg}</p>
-          )}
-          <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 3 attached logs (sortable) + 1 unplanned log.</p>
+          {seedMsg && <p className={seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'}>{seedMsg}</p>}
+          <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 3 attached logs + 1 unplanned log.</p>
         </section>
       </main>
 
