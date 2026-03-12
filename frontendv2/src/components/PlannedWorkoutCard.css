@@ -14,7 +14,7 @@
   cursor: pointer;
   text-align: left;
   line-height: 1.35;
-  transition: background 0.12s, box-shadow 0.12s;
+  transition: background 0.12s, box-shadow 0.12s, opacity 0.12s;
   overflow: hidden;
 }
 
@@ -28,50 +28,25 @@
   outline-offset: 1px;
 }
 
-/* ── Quality type ────────────────────────────────────────── */
-.pw-card--quality {
-  background: #fefcbf;
-  color: #744210;
+/* When dragging */
+.pw-card--dragging {
+  opacity: 0.4;
+  cursor: grabbing;
 }
 
-.pw-card--quality:hover {
-  background: #faf089;
+/* Cursor hint when draggable */
+.pw-card[draggable='true'] {
+  cursor: grab;
 }
 
-/* ── Locked ──────────────────────────────────────────────── */
-.pw-card--locked {
-  border-left: 2px solid #a0aec0;
-}
-
-/* ── Compact (month view) ────────────────────────────────── */
-.pw-card--compact {
-  font-size: 0.65rem;
-  padding: 0.15rem 0.3rem;
-  border-radius: 4px;
-}
+/* ── Variants ────────────────────────────────────────────── */
+.pw-card--quality         { background: #fefcbf; color: #744210; }
+.pw-card--quality:hover   { background: #faf089; }
+.pw-card--locked          { border-left: 2px solid #a0aec0; }
+.pw-card--compact         { font-size: 0.65rem; padding: 0.15rem 0.3rem; border-radius: 4px; }
 
 /* ── Inner elements ──────────────────────────────────────── */
-.pw-card__type {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pw-card__meta {
-  font-size: 0.65rem;
-  font-weight: 400;
-  color: #718096;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.pw-card--quality .pw-card__meta {
-  color: #975a16;
-}
-
-.pw-card__lock {
-  font-size: 0.6rem;
-  flex-shrink: 0;
-  margin-left: auto;
-}
+.pw-card__type  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-card__meta  { font-size: 0.65rem; font-weight: 400; color: #718096; white-space: nowrap; flex-shrink: 0; }
+.pw-card--quality .pw-card__meta { color: #975a16; }
+.pw-card__lock  { font-size: 0.6rem; flex-shrink: 0; margin-left: auto; }

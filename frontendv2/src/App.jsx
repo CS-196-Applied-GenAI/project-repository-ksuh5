@@ -2,16 +2,23 @@ import { useState, useEffect }  from 'react';
 import { useAppData }           from './hooks/useAppData.js';
 import { seedSampleData }       from './db/seed.js';
 import { formatCount }          from './utils/formatters.js';
-import { getActiveRaceId, getActiveRace, makeRace } from './domain/raceHelpers.js';
-import { today, addDays, startOfMonth, addMonths }  from './domain/calendarHelpers.js';
-import { createRaceEnforcingSingleActive, updatePlannedWorkout } from './db/mutations.js';
-import RaceBar              from './components/RaceBar.jsx';
-import RaceModal            from './components/RaceModal.jsx';
-import ConflictModal        from './components/ConflictModal.jsx';
-import WeekCalendar         from './components/WeekCalendar.jsx';
-import MonthCalendar        from './components/MonthCalendar.jsx';
-import CalendarToggle       from './components/CalendarToggle.jsx';
-import PlannedWorkoutModal  from './components/PlannedWorkoutModal.jsx';
+import { getActiveRaceId, getActiveRace, makeRace }  from './domain/raceHelpers.js';
+import { today, addDays, startOfMonth, addMonths }   from './domain/calendarHelpers.js';
+import { groupPlannedByDate }                         from './domain/calendarHelpers.js';
+import { shouldConfirmDrop }                          from './domain/workoutHelpers.js';
+import {
+  createRaceEnforcingSingleActive,
+  updatePlannedWorkout,
+  movePlannedWorkoutDate,
+} from './db/mutations.js';
+import RaceBar             from './components/RaceBar.jsx';
+import RaceModal           from './components/RaceModal.jsx';
+import ConflictModal       from './components/ConflictModal.jsx';
+import WeekCalendar        from './components/WeekCalendar.jsx';
+import MonthCalendar       from './components/MonthCalendar.jsx';
+import CalendarToggle      from './components/CalendarToggle.jsx';
+import PlannedWorkoutModal from './components/PlannedWorkoutModal.jsx';
+import ConfirmDropModal    from './components/ConfirmDropModal.jsx';
 import './App.css';
 
 export default function App() {
@@ -43,7 +50,7 @@ export default function App() {
   const handlePrevMonth = () => setAnchor((a) => addMonths(startOfMonth(a), -1));
   const handleNextMonth = () => setAnchor((a) => addMonths(startOfMonth(a), 1));
 
-  // ── Planned workout selection + save ──────────────────
+  // ── Planned workout selection + edit save ─────────────
   const [selectedWorkoutId, setSelectedWorkoutId] = useState(null);
 
   const selectedWorkout =
@@ -52,16 +59,61 @@ export default function App() {
   function handleSelectWorkout(workout) { setSelectedWorkoutId(workout.id); }
   function handleCloseWorkoutModal()    { setSelectedWorkoutId(null); }
 
-  /**
-   * Persist a patch to a planned workout, then reload state.
-   * applyPlannedWorkoutPatch (inside updatePlannedWorkout) handles
-   * locked=true and updatedAt automatically.
-   */
   async function handleSaveWorkout(id, patch) {
     const existing = activePlannedWorkouts.find((pw) => pw.id === id);
     if (!existing) throw new Error('Workout not found.');
     await updatePlannedWorkout(existing, patch);
     await reload();
+  }
+
+  // ── Drag/drop state machine ───────────────────────────
+  //
+  // pendingDrop holds { workoutId, targetDate } while ConfirmDropModal is open.
+  const [pendingDrop, setPendingDrop] = useState(null);
+
+  // groupPlannedByDate is pure — compute once for the drop handler
+  const byDate = groupPlannedByDate(activePlannedWorkouts);
+
+  /**
+   * Called by DayCell when a workout is dropped onto a date.
+   * If the target date already has workouts → show confirm modal.
+   * Otherwise → move immediately.
+   */
+  async function handleDropWorkout(workoutId, targetDate) {
+    const workout = activePlannedWorkouts.find((pw) => pw.id === workoutId);
+    if (!workout) return;
+
+    // Dropping onto the same date → no-op
+    if (workout.date === targetDate) return;
+
+    // Count existing workouts on target (excluding the dragged one)
+    const existing = (byDate[targetDate] ?? []).filter((pw) => pw.id !== workoutId);
+
+    if (shouldConfirmDrop(existing.length)) {
+      // Park the intent and ask the user
+      setPendingDrop({ workoutId, targetDate });
+    } else {
+      await doMoveWorkout(workoutId, targetDate);
+    }
+  }
+
+  async function doMoveWorkout(workoutId, targetDate) {
+    const workout = activePlannedWorkouts.find((pw) => pw.id === workoutId);
+    if (!workout) return;
+    await movePlannedWorkoutDate(workout, targetDate);
+    await reload();
+  }
+
+  async function handleConfirmDrop() {
+    if (!pendingDrop) return;
+    const { workoutId, targetDate } = pendingDrop;
+    setPendingDrop(null);
+    await doMoveWorkout(workoutId, targetDate);
+  }
+
+  function handleCancelDrop() {
+    setPendingDrop(null);
+    // Nothing is moved — original date stays
   }
 
   // ── Race creation ─────────────────────────────────────
@@ -102,12 +154,18 @@ export default function App() {
     finally { setSeeding(false); }
   }
 
+  // ── Confirm drop info ─────────��───────────────────────
+  const confirmDropCount = pendingDrop
+    ? (byDate[pendingDrop.targetDate] ?? [])
+        .filter((pw) => pw.id !== pendingDrop.workoutId).length
+    : 0;
+
   // ── Render ────────────────────────────────────────────
   return (
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 9 — Planned workout editing ✓</p>
+        <p className="app-status">Step 10 — Drag/drop rescheduling ✓</p>
       </header>
 
       <main className="app-main">
@@ -142,6 +200,7 @@ export default function App() {
                 onPrevWeek={handlePrevWeek}
                 onNextWeek={handleNextWeek}
                 onSelectWorkout={handleSelectWorkout}
+                onDropWorkout={handleDropWorkout}
               />
             ) : (
               <MonthCalendar
@@ -153,6 +212,7 @@ export default function App() {
                 onPrevMonth={handlePrevMonth}
                 onNextMonth={handleNextMonth}
                 onSelectWorkout={handleSelectWorkout}
+                onDropWorkout={handleDropWorkout}
               />
             )}
           </section>
@@ -200,6 +260,7 @@ export default function App() {
         </section>
       </main>
 
+      {/* ── Modals ───────────────────────────────── */}
       <RaceModal
         isOpen={raceModalOpen}
         onClose={() => setRaceModalOpen(false)}
@@ -215,6 +276,13 @@ export default function App() {
         isOpen={selectedWorkoutId !== null}
         onClose={handleCloseWorkoutModal}
         onSave={handleSaveWorkout}
+      />
+      <ConfirmDropModal
+        isOpen={pendingDrop !== null}
+        targetDate={pendingDrop?.targetDate ?? ''}
+        count={confirmDropCount}
+        onConfirm={handleConfirmDrop}
+        onCancel={handleCancelDrop}
       />
     </div>
   );

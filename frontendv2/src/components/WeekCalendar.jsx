@@ -1,22 +1,12 @@
 /**
- * WeekCalendar — Step 8: uses PlannedWorkoutCard, fires onSelectWorkout
- *
- * Props:
- *   weekAnchor        {string}
- *   plannedWorkouts   {PlannedWorkout[]}
- *   todayYMD          {string}
- *   raceStartDate     {string|null}
- *   raceEndDate       {string|null}
- *   onPrevWeek        {() => void}
- *   onNextWeek        {() => void}
- *   onSelectWorkout   {(workout: PlannedWorkout) => void}
+ * WeekCalendar — Step 10: uses DayCell (drag/drop)
  */
 import {
   getWeekDays,
   groupPlannedByDate,
   shortDateLabel,
 } from '../domain/calendarHelpers.js';
-import PlannedWorkoutCard from './PlannedWorkoutCard.jsx';
+import DayCell from './DayCell.jsx';
 import './WeekCalendar.css';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -25,11 +15,12 @@ export default function WeekCalendar({
   weekAnchor,
   plannedWorkouts,
   todayYMD,
-  raceStartDate    = null,
-  raceEndDate      = null,
+  raceStartDate   = null,
+  raceEndDate     = null,
   onPrevWeek,
   onNextWeek,
-  onSelectWorkout  = () => {},
+  onSelectWorkout = () => {},
+  onDropWorkout   = () => {},
 }) {
   const days   = getWeekDays(weekAnchor);
   const byDate = groupPlannedByDate(plannedWorkouts);
@@ -52,44 +43,22 @@ export default function WeekCalendar({
       {/* Day cells */}
       <div className="wc-grid wc-grid--body">
         {days.map((ymd) => {
-          const workouts     = byDate[ymd] ?? [];
-          const isToday      = ymd === todayYMD;
-          const isOutOfRange = raceStartDate && raceEndDate
-            && (ymd < raceStartDate || ymd > raceEndDate);
+          const isOutOfRange = !!(raceStartDate && raceEndDate &&
+            (ymd < raceStartDate || ymd > raceEndDate));
 
           return (
-            <div
+            <DayCell
               key={ymd}
-              className={[
-                'wc-day',
-                isToday       ? 'wc-day--today'        : '',
-                isOutOfRange  ? 'wc-day--out-of-range' : '',
-                workouts.length > 0 ? 'wc-day--has-workouts' : '',
-              ].filter(Boolean).join(' ')}
-            >
-              {/* Date label */}
-              <div className="wc-day__date">
-                <span className="wc-day__dom">{shortDateLabel(ymd)}</span>
-                {isToday && <span className="wc-day__today-pill">today</span>}
-              </div>
-
-              {/* Planned workout cards */}
-              {workouts.length === 0 ? (
-                <p className="wc-day__empty">—</p>
-              ) : (
-                <ul className="wc-day__workouts">
-                  {workouts.map((pw) => (
-                    <li key={pw.id}>
-                      <PlannedWorkoutCard
-                        workout={pw}
-                        onClick={onSelectWorkout}
-                        compact={false}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+              ymd={ymd}
+              workouts={byDate[ymd] ?? []}
+              isToday={ymd === todayYMD}
+              isOutOfRange={isOutOfRange}
+              isOtherMonth={false}
+              compact={false}
+              dateLabel={shortDateLabel(ymd)}
+              onSelectWorkout={onSelectWorkout}
+              onDropWorkout={onDropWorkout}
+            />
           );
         })}
       </div>

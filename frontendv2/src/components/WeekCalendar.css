@@ -1,15 +1,14 @@
-/* ── Week Calendar ───────────────────────────────────────── */
+/* ── Week Calendar shell ─────────────────────────────────── */
 .week-calendar {
   display: flex;
   flex-direction: column;
-  gap: 0;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   overflow: hidden;
   background: #fff;
 }
 
-/* ── Nav bar ─────────────────────────────────────────────── */
+/* ── Nav ─────────────────────────────────────────────────── */
 .wc-nav {
   display: flex;
   align-items: center;
@@ -20,8 +19,8 @@
 }
 
 .wc-nav__label {
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   color: #2d3748;
 }
 
@@ -37,18 +36,14 @@
   transition: background 0.12s, color 0.12s;
 }
 
-.wc-nav__btn:hover {
-  background: #edf2f7;
-  color: #1a202c;
-}
+.wc-nav__btn:hover { background: #edf2f7; color: #1a202c; }
 
-/* ── 7-column grid (shared by header + body) ─────────────── */
+/* ── Grid ────────────────────────────────────────────────── */
 .wc-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
 }
 
-/* ── Column headers ──────────────────────────────────────── */
 .wc-grid--header {
   background: #edf2f7;
   border-bottom: 1px solid #e2e8f0;
@@ -64,114 +59,9 @@
   color: #718096;
 }
 
-/* ── Day cells ───────────────────────────────────────────── */
-.wc-day {
-  min-height: 90px;
-  padding: 0.45rem 0.4rem 0.5rem;
-  border-right: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  background: #fff;
-  transition: background 0.1s;
-}
+/* ── Last column: no right border (DayCell handles the rest) */
+.wc-grid--body > .day-cell:nth-child(7n) { border-right: none; }
 
-/* last column: no right border */
-.wc-day:nth-child(7n) {
-  border-right: none;
-}
-
-.wc-day--out-of-range {
-  background: #f7fafc;
-  opacity: 0.55;
-}
-
-.wc-day--today {
-  background: #ebf8ff;
-}
-
-.wc-day--today .wc-day__date {
-  color: #2b6cb0;
-}
-
-/* ── Date label ──────────────────────────────────────────── */
-.wc-day__date {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.wc-day__dom {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #4a5568;
-  white-space: nowrap;
-}
-
-.wc-day__today-pill {
-  font-size: 0.62rem;
-  font-weight: 700;
-  background: #3182ce;
-  color: #fff;
-  border-radius: 999px;
-  padding: 0.05rem 0.35rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-/* ── Empty state ─────────────────────────────────────────── */
-.wc-day__empty {
-  margin: 0;
-  font-size: 0.72rem;
-  color: #cbd5e0;
-  text-align: center;
-  padding-top: 0.25rem;
-}
-
-/* ── Workout chips ───────────────────────────────────────── */
-.wc-day__workouts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.wc-chip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.2rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 5px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  background: #edf2f7;
-  color: #2d3748;
-  cursor: default;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.wc-chip--quality {
-  background: #fefcbf;
-  color: #744210;
-}
-
-.wc-chip__lock {
-  font-size: 0.6rem;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-/* ── Responsive: tighten on narrow screens ───────────────── */
 @media (max-width: 600px) {
-  .wc-col-header  { font-size: 0.62rem; padding: 0.25rem 0; }
-  .wc-chip        { font-size: 0.62rem; padding: 0.15rem 0.3rem; }
-  .wc-day         { min-height: 70px; padding: 0.35rem 0.25rem; }
-  .wc-day__dom    { font-size: 0.68rem; }
+  .wc-col-header { font-size: 0.62rem; padding: 0.25rem 0; }
 }

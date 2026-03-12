@@ -2,8 +2,8 @@
  * Write-through mutation helpers.
  */
 import db from './db.js';
-import { applyNewRaceDecision }      from '../domain/raceHelpers.js';
-import { applyPlannedWorkoutPatch }  from '../domain/workoutHelpers.js';
+import { applyNewRaceDecision }                      from '../domain/raceHelpers.js';
+import { applyPlannedWorkoutPatch, movePlannedWorkout } from '../domain/workoutHelpers.js';
 
 // ── Races ────────────────────────────────────────────────
 
@@ -28,17 +28,24 @@ export async function deletePlannedWorkout(id) {
 }
 
 /**
- * Apply a patch to an existing planned workout.
- * Uses applyPlannedWorkoutPatch for locking semantics, then persists.
- * Returns the updated workout.
- *
- * @param {object} existing  Current workout from React state.
- * @param {object} patch     Fields to change.
- * @returns {Promise<object>}
+ * Apply an edit patch (locking semantics via applyPlannedWorkoutPatch).
+ * Returns the updated workout, or the original if nothing changed.
  */
 export async function updatePlannedWorkout(existing, patch) {
   const updated = applyPlannedWorkoutPatch(existing, patch);
-  if (updated === existing) return existing; // nothing changed
+  if (updated === existing) return existing;
+  await db.plannedWorkouts.put(updated);
+  return updated;
+}
+
+/**
+ * Move a planned workout to a new date via drag/drop.
+ * Uses movePlannedWorkout so locked status is NOT changed.
+ * Returns the updated workout, or the original if date unchanged.
+ */
+export async function movePlannedWorkoutDate(existing, newDate) {
+  const updated = movePlannedWorkout(existing, newDate);
+  if (updated === existing) return existing;
   await db.plannedWorkouts.put(updated);
   return updated;
 }

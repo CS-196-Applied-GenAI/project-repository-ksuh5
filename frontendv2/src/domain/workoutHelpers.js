@@ -3,67 +3,69 @@
  * No side-effects — safe to unit-test in Node.
  */
 
-import { WORKOUT_TYPES } from './workoutTypes.js';
-
-/**
- * All fields that count as "user-editable" for locking purposes.
- * Editing any of these automatically sets locked=true.
- */
-const LOCKABLE_FIELDS = new Set([
-  'type',
-  'date',
-  'distance',
-  'durationMinutes',
-  'paceLow',
-  'paceHigh',
-  'structureText',
-  'title',
-  'notes',
-]);
-
 /**
  * Applies a partial patch to a PlannedWorkout and returns a new object.
  *
  * Rules:
- *  - If the patch touches any lockable field whose value actually changed,
- *    `locked` is set to `true`.
- *  - `updatedAt` is always refreshed to `now` when any field changes.
- *  - If the patch changes nothing at all, the original object is returned
- *    unchanged (referential equality preserved).
+ *  - `locked` is NEVER changed by this function — locking is manual only.
+ *  - `updatedAt` is refreshed whenever any field actually changes.
+ *  - Returns the original reference unchanged when nothing differs.
  *
- * Pure: does not mutate inputs; does not call Date.now() directly —
- * accepts an optional `now` override so tests are deterministic.
- *
- * @param {object} workout  Existing PlannedWorkout record.
- * @param {object} patch    Partial fields to apply.
- * @param {object} [opts]
- * @param {string} [opts.now]  ISO timestamp override (for tests).
- * @returns {object}  New PlannedWorkout (or original if nothing changed).
+ * @param {object} workout
+ * @param {object} patch
+ * @param {{ now?: string }} [opts]
+ * @returns {object}
  */
 export function applyPlannedWorkoutPatch(workout, patch, opts = {}) {
   const now = opts.now ?? new Date().toISOString();
 
-  // Determine which lockable fields actually changed value
-  const lockableChanged = Object.keys(patch).some(
-    (key) => LOCKABLE_FIELDS.has(key) && patch[key] !== workout[key]
-  );
-
-  // Determine if anything at all changed (to avoid pointless updates)
   const anyChanged = Object.keys(patch).some((key) => patch[key] !== workout[key]);
-
-  if (!anyChanged) return workout; // nothing to do
+  if (!anyChanged) return workout;
 
   return {
     ...workout,
     ...patch,
-    locked:    lockableChanged ? true : workout.locked,
+    // locked is spread from patch if explicitly included, otherwise preserved as-is
     updatedAt: now,
   };
 }
 
 /**
+ * Moves a PlannedWorkout to a new date WITHOUT touching locked.
+ * Drag/drop rescheduling must not affect the lock flag.
+ *
+ * Returns the original reference unchanged when `newDate === workout.date`.
+ *
+ * @param {object} workout
+ * @param {string} newDate  YYYY-MM-DD
+ * @param {{ now?: string }} [opts]
+ * @returns {object}
+ */
+export function movePlannedWorkout(workout, newDate, opts = {}) {
+  if (workout.date === newDate) return workout;
+  const now = opts.now ?? new Date().toISOString();
+  return {
+    ...workout,
+    date:      newDate,
+    // locked intentionally NOT changed
+    updatedAt: now,
+  };
+}
+
+/**
+ * Returns true when the user should be shown a confirmation dialog before
+ * completing a drag/drop move onto a target day.
+ *
+ * @param {number} targetDayWorkoutCount
+ * @returns {boolean}
+ */
+export function shouldConfirmDrop(targetDayWorkoutCount) {
+  return targetDayWorkoutCount > 0;
+}
+
+/**
  * Parses a string value for a numeric workout field.
- * Returns null for empty / non-numeric input.
+ * Returns null for empty / non-numeric / negative input.
  *
  * @param {string} raw
  * @returns {number | null}
@@ -78,17 +80,7 @@ export function parseWorkoutNumber(raw) {
  * Normalises a raw form submission into a clean patch object.
  * Converts empty strings → null for numeric fields.
  *
- * @param {{
- *   type?: string,
- *   date?: string,
- *   title?: string,
- *   distance?: string,
- *   durationMinutes?: string,
- *   paceLow?: string,
- *   paceHigh?: string,
- *   structureText?: string,
- *   notes?: string,
- * }} rawForm
+ * @param {object} rawForm
  * @returns {object}
  */
 export function normaliseWorkoutForm(rawForm) {

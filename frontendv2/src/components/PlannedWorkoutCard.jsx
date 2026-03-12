@@ -1,22 +1,39 @@
 /**
- * PlannedWorkoutCard
- *
- * Compact chip rendered inside a calendar day cell.
+ * PlannedWorkoutCard — Step 10: draggable
  *
  * Props:
  *   workout    {PlannedWorkout}
  *   onClick    {(workout: PlannedWorkout) => void}
- *   compact    {boolean}  true = month view (even smaller)
+ *   compact    {boolean}
+ *   draggable  {boolean}   default false
+ *   dragMime   {string}    MIME type for dataTransfer
  */
 import { displayWorkoutType, isQualityType } from '../domain/workoutTypes.js';
 import './PlannedWorkoutCard.css';
 
-export default function PlannedWorkoutCard({ workout, onClick, compact = false }) {
+export default function PlannedWorkoutCard({
+  workout,
+  onClick,
+  compact   = false,
+  draggable = false,
+  dragMime  = 'application/x-plannedworkoutid',
+}) {
   const quality = isQualityType(workout.type);
   const label   = displayWorkoutType(workout.type);
+  const meta    = buildMeta(workout);
 
-  // Build a short meta string: "3 mi · 30 min"
-  const meta = buildMeta(workout);
+  // ── Drag handlers ─────────────────────────────────────
+
+  function handleDragStart(e) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData(dragMime, workout.id);
+    // Small timeout so the ghost image appears before any visual changes
+    setTimeout(() => e.target.classList.add('pw-card--dragging'), 0);
+  }
+
+  function handleDragEnd(e) {
+    e.target.classList.remove('pw-card--dragging');
+  }
 
   return (
     <button
@@ -30,6 +47,9 @@ export default function PlannedWorkoutCard({ workout, onClick, compact = false }
       onClick={() => onClick(workout)}
       title={workout.title || label}
       aria-label={`${label}${meta ? ', ' + meta : ''}${workout.locked ? ', locked' : ''}`}
+      draggable={draggable}
+      onDragStart={draggable ? handleDragStart : undefined}
+      onDragEnd={draggable   ? handleDragEnd   : undefined}
     >
       <span className="pw-card__type">{label}</span>
 
@@ -43,8 +63,6 @@ export default function PlannedWorkoutCard({ workout, onClick, compact = false }
     </button>
   );
 }
-
-// ── helpers ───────────────────────────────────────────────
 
 function buildMeta(workout) {
   const parts = [];

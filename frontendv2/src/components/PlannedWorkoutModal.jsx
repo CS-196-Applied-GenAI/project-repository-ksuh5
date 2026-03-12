@@ -1,5 +1,5 @@
 /**
- * PlannedWorkoutModal  (Step 9: editable)
+ * PlannedWorkoutModal  (Step 9 + Step 10 edit: no auto-lock)
  *
  * Props:
  *   workout   {PlannedWorkout | null}
@@ -9,13 +9,8 @@
  */
 import { useState, useEffect } from 'react';
 import { displayWorkoutType, isQualityType, ALL_WORKOUT_TYPES } from '../domain/workoutTypes.js';
-import { normaliseWorkoutForm } from '../domain/workoutHelpers.js';
+import { normaliseWorkoutForm } from '../domain/workoutHelpers.js';   // ← was ./workoutHelpers.js
 import './PlannedWorkoutModal.css';
-
-// Fields whose change triggers auto-lock (mirrors LOCKABLE_FIELDS in workoutHelpers)
-const LOCKABLE_FORM_FIELDS = new Set([
-  'type','date','distance','durationMinutes','paceLow','paceHigh','structureText','title','notes',
-]);
 
 export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }) {
   const [form,    setForm]    = useState(null);
@@ -31,7 +26,7 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
       setSaveErr('');
       setSaving(false);
     }
-  }, [isOpen, workout?.id]);   // re-init only when the workout identity changes
+  }, [isOpen, workout?.id]);
 
   // Close on Escape
   useEffect(() => {
@@ -45,22 +40,22 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
 
   const quality   = isQualityType(form.type);
   const typeLabel = displayWorkoutType(form.type);
-  // locked if already locked, OR if any lockable field is dirty
-  const willBeLocked = workout.locked || dirty;
 
   function handleChange(e) {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (LOCKABLE_FORM_FIELDS.has(name)) setDirty(true);
+    const { name, value, type, checked } = e.target;
+    const newValue = type === 'checkbox' ? checked : value;
+    setForm((prev) => ({ ...prev, [name]: newValue }));
+    setDirty(true);
   }
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!dirty) { onClose(); return; }   // nothing changed → just close
+    if (!dirty) { onClose(); return; }
     setSaving(true);
     setSaveErr('');
     try {
-      const patch = normaliseWorkoutForm(form);
+      // Include the current locked value from the form (controlled by checkbox)
+      const patch = { ...normaliseWorkoutForm(form), locked: form.locked };
       await onSave(workout.id, patch);
       onClose();
     } catch (err) {
@@ -89,13 +84,19 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
             <h2 id="pw-modal-title" className="modal-title">
               {form.title || typeLabel}
             </h2>
-            {willBeLocked && (
+            {form.locked && (
               <span className="pw-modal-locked-header" title="Locked — recalc will not change this">
                 🔒
               </span>
             )}
           </div>
-          <button className="modal-close" onClick={onClose} disabled={saving} aria-label="Close" type="button">
+          <button
+            className="modal-close"
+            onClick={onClose}
+            disabled={saving}
+            aria-label="Close"
+            type="button"
+          >
             ✕
           </button>
         </div>
@@ -107,12 +108,7 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
             {/* Row 1: type + date */}
             <div className="pw-form-row pw-form-row--2col">
               <FormField label="Type" required>
-                <select
-                  name="type"
-                  className="form-input"
-                  value={form.type}
-                  onChange={handleChange}
-                >
+                <select name="type" className="form-input" value={form.type} onChange={handleChange}>
                   {ALL_WORKOUT_TYPES.map((t) => (
                     <option key={t} value={t}>{displayWorkoutType(t)}</option>
                   ))}
@@ -221,19 +217,19 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
               />
             </FormField>
 
-            {/* Lock status */}
+            {/* Row 7: manual lock toggle */}
             <div className="pw-lock-row">
               <label className="pw-lock-label">
                 <input
                   type="checkbox"
-                  checked={willBeLocked}
-                  readOnly
-                  aria-label="Locked status (auto-set on edit)"
+                  name="locked"
+                  checked={form.locked}
+                  onChange={handleChange}
                 />
                 <span>
-                  {willBeLocked
+                  {form.locked
                     ? '🔒 Locked — recalculate will skip this workout'
-                    : 'Unlocked — recalculate may change this workout'}
+                    : 'Unlocked — recalculate may adjust this workout'}
                 </span>
               </label>
             </div>
@@ -265,7 +261,6 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
 
 // ── helpers ───────────────────────────────────────────────
 
-/** Convert stored workout → form field values (strings for inputs). */
 function workoutToForm(w) {
   return {
     type:            w.type            ?? 'easy',
@@ -277,6 +272,7 @@ function workoutToForm(w) {
     paceHigh:        w.paceHigh        ?? '',
     structureText:   w.structureText   ?? '',
     notes:           w.notes           ?? '',
+    locked:          w.locked          ?? false,
   };
 }
 
