@@ -1,18 +1,23 @@
-/**
- * useAppData
- *
- * Loads all three tables from Dexie into React state on mount.
- * Also exposes a `reload` function to re-query after mutations.
- */
 import { useState, useEffect, useCallback } from 'react';
-import db from '../db/db.js';
+import db                from '../db/db.js';
+import { loadState }     from '../api/stateApi.js';
+import { applySnapshot } from '../db/snapshotHelpers.js';
+
+async function isDexieEmpty() {
+  const [rCount, pwCount, wlCount] = await Promise.all([
+    db.races.count(),
+    db.plannedWorkouts.count(),
+    db.workoutLogs.count(),
+  ]);
+  return rCount === 0 && pwCount === 0 && wlCount === 0;
+}
 
 export function useAppData() {
-  const [races, setRaces] = useState([]);
-  const [plannedWorkouts, setPlannedWorkouts] = useState([]);
-  const [workoutLogs, setWorkoutLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [races,           setRaces]           = useState([]);
+  const [plannedWorkouts, setPlannedWorkouts]  = useState([]);
+  const [workoutLogs,     setWorkoutLogs]      = useState([]);
+  const [loading,         setLoading]          = useState(true);
+  const [error,           setError]            = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,9 +39,26 @@ export function useAppData() {
     }
   }, []);
 
-  // Load once on mount
+  // ── Bootstrap on mount ────────────────────────────────
+  // If Dexie is empty, attempt to restore from backend snapshot before
+  // loading into React state. Failures are non-fatal (best-effort).
   useEffect(() => {
-    load();
+    async function bootstrap() {
+      try {
+        const empty = await isDexieEmpty();
+        if (empty) {
+          const snapshot = await loadState();
+          if (snapshot) {
+            await applySnapshot(snapshot);
+          }
+        }
+      } catch (err) {
+        console.warn('Bootstrap from backend snapshot failed:', err);
+      } finally {
+        await load();
+      }
+    }
+    bootstrap();
   }, [load]);
 
   return { races, plannedWorkouts, workoutLogs, loading, error, reload: load };
