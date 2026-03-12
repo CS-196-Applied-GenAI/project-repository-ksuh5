@@ -9,6 +9,7 @@ import {
   createRaceEnforcingSingleActive,
   updatePlannedWorkout,
   movePlannedWorkoutDate,
+  upsertPlannedWorkout,
 } from './db/mutations.js';
 import RaceBar             from './components/RaceBar.jsx';
 import RaceModal           from './components/RaceModal.jsx';
@@ -18,6 +19,7 @@ import MonthCalendar       from './components/MonthCalendar.jsx';
 import CalendarToggle      from './components/CalendarToggle.jsx';
 import PlannedWorkoutModal from './components/PlannedWorkoutModal.jsx';
 import ConfirmDropModal    from './components/ConfirmDropModal.jsx';
+import AddWorkoutModal     from './components/AddWorkoutModal.jsx';
 import './App.css';
 
 export default function App() {
@@ -125,6 +127,14 @@ export default function App() {
     } finally { setCreating(false); setRaceModalOpen(false); }
   }
 
+  // ── Add workout ───────────────────────────────────────
+  const [addWorkoutOpen, setAddWorkoutOpen] = useState(false);
+
+  async function handleAddWorkout(workout) {
+    await upsertPlannedWorkout(workout);
+    await reload();
+  }
+
   // ── Seed ──────────────────────────────────────────────
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
@@ -169,7 +179,18 @@ export default function App() {
                 Calendar
                 {!activeRace && <span className="section-hint"> — no active race</span>}
               </h2>
-              <CalendarToggle view={calView} onChange={setCalView} />
+              <div className="calendar-section__actions">
+                {activeRace && (
+                  <button
+                    type="button"
+                    className="btn-add-workout"
+                    onClick={() => setAddWorkoutOpen(true)}
+                  >
+                    ＋ Add Workout
+                  </button>
+                )}
+                <CalendarToggle view={calView} onChange={setCalView} />
+              </div>
             </div>
 
             {calView === 'week' ? (
@@ -266,6 +287,13 @@ export default function App() {
         count={confirmDropCount}
         onConfirm={handleConfirmDrop}
         onCancel={handleCancelDrop}
+      />
+      <AddWorkoutModal
+        isOpen={addWorkoutOpen}
+        onClose={() => setAddWorkoutOpen(false)}
+        onSave={handleAddWorkout}
+        defaultDate={activeRace?.startDate ?? today()}
+        activeRaceId={activeRaceId}
       />
     </div>
   );
