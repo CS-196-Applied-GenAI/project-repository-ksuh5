@@ -20,7 +20,11 @@ import CalendarToggle      from './components/CalendarToggle.jsx';
 import PlannedWorkoutModal from './components/PlannedWorkoutModal.jsx';
 import ConfirmDropModal    from './components/ConfirmDropModal.jsx';
 import AddWorkoutModal     from './components/AddWorkoutModal.jsx';
+import Toast               from './components/Toast.jsx';
 import { checkHealth }     from './api/healthApi.js';
+import { recalculatePlan } from './api/recalcApi.js';
+import { setSnapshot, getSnapshot, clearSnapshot } from './state/undoStore.js';
+import { db }              from './db/db.js';
 import './App.css';
 
 
@@ -75,6 +79,7 @@ export default function App() {
     const existing = activePlannedWorkouts.find((pw) => pw.id === id);
     if (!existing) throw new Error('Workout not found.');
     await updatePlannedWorkout(existing, patch);
+    clearSnapshot();
     await reload();
   }
 
@@ -99,6 +104,7 @@ export default function App() {
     const workout = activePlannedWorkouts.find((pw) => pw.id === workoutId);
     if (!workout) return;
     await movePlannedWorkoutDate(workout, targetDate);
+    clearSnapshot();
     await reload();
   }
 
@@ -131,6 +137,7 @@ export default function App() {
 
   async function doCreateRace(fields, decision) {
     setCreating(true);
+    clearSnapshot();
     try {
       const newRace = makeRace({ name: fields.name, startDate: fields.startDate, endDate: fields.endDate });
       const result  = await createRaceEnforcingSingleActive({ newRace, decision, seedWorkout: fields.seedWorkout });
@@ -142,8 +149,45 @@ export default function App() {
   const [addWorkoutOpen, setAddWorkoutOpen] = useState(false);
 
   async function handleAddWorkout(workout) {
+    clearSnapshot();
     await upsertPlannedWorkout(workout);
     await reload();
+  }
+
+  // ── Recalculate plan ──────────────────────────────────
+  const [recalculating, setRecalculating] = useState(false);
+  const [toast,         setToast]         = useState(null); // { message, actionLabel?, onAction? }
+
+  async function handleRecalculate() {
+    if (!activeRace) return;
+    setRecalculating(true);
+    try {
+      setSnapshot(activePlannedWorkouts);
+      const updated = await recalculatePlan({
+        today: today(),
+        raceStatus: activeRace.status,
+        plannedWorkouts: activePlannedWorkouts,
+      });
+      await db.plannedWorkouts.bulkPut(updated);
+      await reload();
+      setToast({
+        message: 'Plan recalculated',
+        actionLabel: 'Undo',
+        onAction: handleUndoRecalculate,
+      });
+    } catch (err) {
+      setToast({ message: `Recalculate failed: ${err.message}` });
+    } finally {
+      setRecalculating(false);
+    }
+  }
+
+  async function handleUndoRecalculate() {
+    const snapshot = getSnapshot();
+    if (!snapshot) return;
+    await db.plannedWorkouts.bulkPut(snapshot);
+    await reload();
+    clearSnapshot();
   }
 
   // ── Seed ──────────────────────────────────────────────
@@ -201,13 +245,23 @@ export default function App() {
               </h2>
               <div className="calendar-section__actions">
                 {activeRace && (
-                  <button
-                    type="button"
-                    className="btn-add-workout"
-                    onClick={() => setAddWorkoutOpen(true)}
-                  >
-                    ＋ Add Workout
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="btn-recalculate"
+                      onClick={handleRecalculate}
+                      disabled={recalculating || !activeRace}
+                    >
+                      {recalculating ? 'Recalculating…' : '🔁 Recalculate Plan'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-add-workout"
+                      onClick={() => setAddWorkoutOpen(true)}
+                    >
+                      ＋ Add Workout
+                    </button>
+                  </>
                 )}
                 <CalendarToggle view={calView} onChange={setCalView} />
               </div>
@@ -280,6 +334,15 @@ export default function App() {
           <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 3 attached logs + 1 unplanned log.</p>
         </section>
       </main>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          actionLabel={toast.actionLabel}
+          onAction={toast.onAction}
+          onDismiss={() => setToast(null)}
+        />
+      )}
 
       <RaceModal
         isOpen={raceModalOpen}
