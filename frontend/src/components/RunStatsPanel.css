@@ -1,0 +1,53 @@
+.run-stats {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 1.1rem 1.2rem;
+}
+
+.run-stats__title {
+  font-size: 1.05rem;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 1rem;
+}
+
+.run-stats__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem 2.2rem;
+  align-items: end;
+}
+
+.run-stats__metric-value {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #1d4ed8;
+  line-height: 1;
+}
+
+.run-stats__metric-subvalue {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #16a34a;
+  margin-top: 0.2rem;
+}
+
+.run-stats__metric-label {
+  margin-top: 0.3rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.12em;
+  color: #64748b;
+}
+
+.run-stats__metric--completed .run-stats__metric-value {
+  color: #1f2937;
+}
+
+.run-stats__completed-distance {
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #111827;
+}
