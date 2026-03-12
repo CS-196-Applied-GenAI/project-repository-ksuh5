@@ -21,6 +21,7 @@ import PlannedWorkoutModal from './components/PlannedWorkoutModal.jsx';
 import ConfirmDropModal    from './components/ConfirmDropModal.jsx';
 import AddWorkoutModal     from './components/AddWorkoutModal.jsx';
 import Toast               from './components/Toast.jsx';
+import CsvImportPanel      from './components/CsvImportPanel.jsx';
 import { checkHealth }     from './api/healthApi.js';
 import { recalculatePlan } from './api/recalcApi.js';
 import { exportCsv }       from './api/csvApi.js';
@@ -212,6 +213,9 @@ export default function App() {
     }
   }
 
+  // ── Import/Export panel toggle ────────────────────────
+  const [importExportOpen, setImportExportOpen] = useState(false);
+
   // ── Seed ──────────────────────────────────────────────
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
@@ -275,14 +279,6 @@ export default function App() {
                       disabled={recalculating}
                     >
                       {recalculating ? 'Recalculating…' : '🔁 Recalculate Plan'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-export"
-                      onClick={handleExportCsv}
-                      disabled={exporting}
-                    >
-                      {exporting ? 'Exporting…' : '⬇ Export CSV'}
                     </button>
                     <button
                       type="button"
@@ -362,6 +358,31 @@ export default function App() {
           </button>
           {seedMsg && <p className={seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'}>{seedMsg}</p>}
           <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 3 attached logs + 1 unplanned log.</p>
+
+          {/* ── Import / Export ── */}
+          <div className="import-export-section">
+            <button
+              type="button"
+              className="btn-toggle-import-export"
+              onClick={() => setImportExportOpen((v) => !v)}
+            >
+              {importExportOpen ? '▲ Hide Import / Export' : '▼ Import / Export'}
+            </button>
+
+            {importExportOpen && (
+              <div className="import-export-panel">
+                <button
+                  type="button"
+                  className="btn-export"
+                  onClick={handleExportCsv}
+                  disabled={exporting || !activeRace}
+                >
+                  {exporting ? 'Exporting…' : '⬇ Export CSV'}
+                </button>
+                <CsvImportPanel onImportComplete={reload} />
+              </div>
+            )}
+          </div>
         </section>
       </main>
 
