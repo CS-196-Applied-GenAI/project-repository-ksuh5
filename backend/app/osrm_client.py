@@ -23,10 +23,11 @@ class OsrmClient:
             raise ValueError("At least 2 waypoints are required")
 
         coords = ";".join([f"{p.lng},{p.lat}" for p in waypoints])
-        url = f"{self.base_url}/route/v1/driving/{coords}"
+        # Use 'foot' profile — sidewalks, footpaths, trails only
+        url    = f"{self.base_url}/route/v1/foot/{coords}"
         params = {"geometries": "geojson", "overview": "full"}
 
-        with httpx.Client(timeout=10.0) as client:
+        with httpx.Client(timeout=15.0) as client:
             resp = client.get(url, params=params)
 
         if resp.status_code != 200:
@@ -34,9 +35,9 @@ class OsrmClient:
 
         data = resp.json()
         try:
-            route0 = data["routes"][0]
+            route0     = data["routes"][0]
             distance_m = route0["distance"]
-            geometry = route0["geometry"]
+            geometry   = route0["geometry"]
         except Exception as e:
             raise OsrmError(f"Invalid OSRM response shape: {data}") from e
 

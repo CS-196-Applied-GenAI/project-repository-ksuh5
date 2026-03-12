@@ -1,12 +1,5 @@
 /**
- * PlannedWorkoutModal  (Step 11: real logs section + Step 7.3: route snap)
- *
- * Props:
- *   workout      {PlannedWorkout | null}
- *   workoutLogs  {WorkoutLog[]}          all logs (filtering done here)
- *   isOpen       {boolean}
- *   onClose      {() => void}
- *   onSave       {(id: string, patch: object) => Promise<void>}
+ * PlannedWorkoutModal
  */
 import { useState, useEffect } from 'react';
 import { displayWorkoutType, isQualityType, ALL_WORKOUT_TYPES } from '../domain/workoutTypes.js';
@@ -21,7 +14,6 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
   const [saving,  setSaving]  = useState(false);
   const [saveErr, setSaveErr] = useState('');
 
-  // Reset form whenever workout changes or modal opens
   useEffect(() => {
     if (isOpen && workout) {
       setForm(workoutToForm(workout));
@@ -31,7 +23,6 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
     }
   }, [isOpen, workout?.id]);
 
-  // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
     const h = (e) => { if (e.key === 'Escape' && !saving) onClose(); };
@@ -47,8 +38,7 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
-    const newValue = type === 'checkbox' ? checked : value;
-    setForm((prev) => ({ ...prev, [name]: newValue }));
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     setDirty(true);
   }
 
@@ -59,6 +49,9 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
     setSaveErr('');
     try {
       const patch = { ...normaliseWorkoutForm(form), locked: form.locked };
+      if (form.routeDistanceKm != null) patch.routeDistanceKm = form.routeDistanceKm;
+      if (form.routeGeometry   != null) patch.routeGeometry   = form.routeGeometry;
+      if (form.routeWaypoints  != null) patch.routeWaypoints  = form.routeWaypoints;
       await onSave(workout.id, patch);
       onClose();
     } catch (err) {
@@ -68,12 +61,30 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
     }
   }
 
-  function handleSnap(result) {
-    setForm((prev) => ({
-      ...prev,
-      distance: result.distanceKm != null ? String(result.distanceKm.toFixed(2)) : prev.distance,
-    }));
+  // Auto-save all route data immediately when backend snap succeeds
+  async function handleSnap(result) {
+    const routePatch = {
+      distance:        result.distanceKm != null ? String(result.distanceKm.toFixed(2)) : form.distance,
+      routeDistanceKm: result.distanceKm,
+      routeGeometry:   result.geometry,
+      routeWaypoints:  result.waypoints ?? null,   // ← full waypoint list from panel
+    };
+    setForm((prev) => ({ ...prev, ...routePatch }));
     setDirty(true);
+
+    try {
+      const patch = {
+        ...normaliseWorkoutForm({ ...form, ...routePatch }),
+        locked:          form.locked,
+        routeDistanceKm: result.distanceKm,
+        routeGeometry:   result.geometry,
+        routeWaypoints:  result.waypoints ?? null,
+      };
+      await onSave(workout.id, patch);
+      setDirty(false);
+    } catch {
+      // Auto-save failed — user can still manually save
+    }
   }
 
   return (
@@ -86,7 +97,6 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
     >
       <div className="modal-box pw-modal-box">
 
-        {/* ── Header ──────────────────────────────── */}
         <div className="modal-header">
           <div className="pw-modal-title-row">
             <span className={`pw-modal-type-badge ${quality ? 'pw-modal-type-badge--quality' : ''}`}>
@@ -96,27 +106,15 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
               {form.title || typeLabel}
             </h2>
             {form.locked && (
-              <span className="pw-modal-locked-header" title="Locked — recalc will not change this">
-                🔒
-              </span>
+              <span className="pw-modal-locked-header" title="Locked — recalc will not change this">🔒</span>
             )}
           </div>
-          <button
-            className="modal-close"
-            onClick={onClose}
-            disabled={saving}
-            aria-label="Close"
-            type="button"
-          >
-            ✕
-          </button>
+          <button className="modal-close" onClick={onClose} disabled={saving} aria-label="Close" type="button">✕</button>
         </div>
 
-        {/* ── Form ────────────────────────────────── */}
         <form className="pw-modal-form" onSubmit={handleSave} noValidate>
           <div className="pw-modal-body">
 
-            {/* Row 1: type + date */}
             <div className="pw-form-row pw-form-row--2col">
               <FormField label="Type" required>
                 <select name="type" className="form-input" value={form.type} onChange={handleChange}>
@@ -125,118 +123,44 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
                   ))}
                 </select>
               </FormField>
-
               <FormField label="Date" required>
-                <input
-                  type="date"
-                  name="date"
-                  className="form-input"
-                  value={form.date}
-                  onChange={handleChange}
-                />
+                <input type="date" name="date" className="form-input" value={form.date} onChange={handleChange} />
               </FormField>
             </div>
 
-            {/* Row 2: title */}
             <FormField label="Title">
-              <input
-                type="text"
-                name="title"
-                className="form-input"
-                value={form.title}
-                onChange={handleChange}
-                placeholder="Optional display label"
-                autoComplete="off"
-              />
+              <input type="text" name="title" className="form-input" value={form.title} onChange={handleChange} placeholder="Optional display label" autoComplete="off" />
             </FormField>
 
-            {/* Row 3: distance + duration */}
             <div className="pw-form-row pw-form-row--2col">
               <FormField label="Distance (km)">
-                <input
-                  type="number"
-                  name="distance"
-                  className="form-input"
-                  value={form.distance}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
-                  placeholder="e.g. 8.05"
-                />
+                <input type="number" name="distance" className="form-input" value={form.distance} onChange={handleChange} min="0" step="0.01" placeholder="e.g. 8.05" />
               </FormField>
-
               <FormField label="Duration (min)">
-                <input
-                  type="number"
-                  name="durationMinutes"
-                  className="form-input"
-                  value={form.durationMinutes}
-                  onChange={handleChange}
-                  min="0"
-                  step="1"
-                  placeholder="e.g. 45"
-                />
+                <input type="number" name="durationMinutes" className="form-input" value={form.durationMinutes} onChange={handleChange} min="0" step="1" placeholder="e.g. 45" />
               </FormField>
             </div>
 
-            {/* Row 4: pace low + pace high */}
             <div className="pw-form-row pw-form-row--2col">
               <FormField label="Pace low (min/km)">
-                <input
-                  type="text"
-                  name="paceLow"
-                  className="form-input"
-                  value={form.paceLow}
-                  onChange={handleChange}
-                  placeholder="e.g. 5:00"
-                />
+                <input type="text" name="paceLow" className="form-input" value={form.paceLow} onChange={handleChange} placeholder="e.g. 5:00" />
               </FormField>
-
               <FormField label="Pace high (min/km)">
-                <input
-                  type="text"
-                  name="paceHigh"
-                  className="form-input"
-                  value={form.paceHigh}
-                  onChange={handleChange}
-                  placeholder="e.g. 5:30"
-                />
+                <input type="text" name="paceHigh" className="form-input" value={form.paceHigh} onChange={handleChange} placeholder="e.g. 5:30" />
               </FormField>
             </div>
 
-            {/* Row 5: structure text */}
             <FormField label="Workout structure">
-              <textarea
-                name="structureText"
-                className="form-input form-textarea"
-                value={form.structureText}
-                onChange={handleChange}
-                rows={3}
-                placeholder="e.g. 2×10 min tempo @ 4:30/km, 3 min recovery"
-              />
+              <textarea name="structureText" className="form-input form-textarea" value={form.structureText} onChange={handleChange} rows={3} placeholder="e.g. 2×10 min tempo @ 4:30/km, 3 min recovery" />
             </FormField>
 
-            {/* Row 6: notes */}
             <FormField label="Notes">
-              <textarea
-                name="notes"
-                className="form-input form-textarea"
-                value={form.notes}
-                onChange={handleChange}
-                rows={2}
-                placeholder="Optional notes"
-              />
+              <textarea name="notes" className="form-input form-textarea" value={form.notes} onChange={handleChange} rows={2} placeholder="Optional notes" />
             </FormField>
 
-            {/* Row 7: manual lock toggle */}
             <div className="pw-lock-row">
               <label className="pw-lock-label">
-                <input
-                  type="checkbox"
-                  name="locked"
-                  checked={form.locked}
-                  onChange={handleChange}
-                />
+                <input type="checkbox" name="locked" checked={form.locked} onChange={handleChange} />
                 <span>
                   {form.locked
                     ? '🔒 Locked — recalculate will skip this workout'
@@ -245,27 +169,35 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
               </label>
             </div>
 
-            {/* ── Route Snap — always visible ──────── */}
+            {/* ── Route Snap ── */}
             <div className="pw-modal-section pw-route-section">
-              <h3 className="pw-modal-section-title">Snap Route</h3>
-              <RouteSnapPanel onSnap={handleSnap} />
+              <h3 className="pw-modal-section-title">
+                Snap Route
+                {form.routeDistanceKm != null && (
+                  <span className="pw-route-saved-badge">
+                    ✓ {Number(form.routeDistanceKm).toFixed(2)} km saved
+                  </span>
+                )}
+              </h3>
+              <RouteSnapPanel
+                onSnap={handleSnap}
+                savedGeometry={workout.routeGeometry ?? null}
+                savedDistanceKm={workout.routeDistanceKm ?? null}
+                savedWaypoints={workout.routeWaypoints ?? null}
+              />
             </div>
 
-            {/* ── Logs section ─────────────────────── */}
+            {/* ── Logs ── */}
             <div className="pw-modal-section pw-logs-section">
               <h3 className="pw-modal-section-title">
                 Workout logs
-                {attachedLogs.length > 0 && (
-                  <span className="pw-logs-count">{attachedLogs.length}</span>
-                )}
+                {attachedLogs.length > 0 && <span className="pw-logs-count">{attachedLogs.length}</span>}
               </h3>
               {attachedLogs.length === 0 ? (
                 <p className="pw-modal-empty-hint">No logs yet for this workout.</p>
               ) : (
                 <ul className="pw-log-list">
-                  {attachedLogs.map((log) => (
-                    <LogEntry key={log.id} log={log} />
-                  ))}
+                  {attachedLogs.map((log) => <LogEntry key={log.id} log={log} />)}
                 </ul>
               )}
             </div>
@@ -273,17 +205,13 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
             {saveErr && <p className="field-error save-error">{saveErr}</p>}
           </div>
 
-          {/* ── Footer ────────────────────────────── */}
           <div className="pw-modal-footer">
-            <button type="button" className="btn btn-cancel" onClick={onClose} disabled={saving}>
-              Cancel
-            </button>
+            <button type="button" className="btn btn-cancel" onClick={onClose} disabled={saving}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
               {saving ? 'Saving…' : dirty ? 'Save' : 'Close'}
             </button>
           </div>
         </form>
-
       </div>
     </div>
   );
@@ -295,7 +223,6 @@ function LogEntry({ log }) {
   const typeLabel = log.type
     ? log.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : '';
-
   return (
     <li className="pw-log-entry">
       <div className="pw-log-entry__header">
@@ -321,6 +248,9 @@ function workoutToForm(w) {
     structureText:   w.structureText   ?? '',
     notes:           w.notes           ?? '',
     locked:          w.locked          ?? false,
+    routeDistanceKm: w.routeDistanceKm ?? null,
+    routeGeometry:   w.routeGeometry   ?? null,
+    routeWaypoints:  w.routeWaypoints  ?? null,
   };
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect }  from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppData }           from './hooks/useAppData.js';
 import { useAutoSave }          from './hooks/useAutoSave.js';
 import { seedSampleData }       from './db/seed.js';
@@ -40,7 +40,7 @@ export default function App() {
   useAutoSave({ races, plannedWorkouts, workoutLogs });
 
   // ── Backend health ────────────────────────────────────
-  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'ok' | 'offline'
+  const [backendStatus, setBackendStatus] = useState('checking');
 
   useEffect(() => {
     checkHealth()
@@ -50,10 +50,25 @@ export default function App() {
 
   // ── Active race ───────────────────────────────────────
   const [activeRaceId, setActiveRaceId] = useState(null);
+  const initializedRef = useRef(false);  // ← track whether we've done first load
 
   useEffect(() => {
-    if (!loading) setActiveRaceId(getActiveRaceId(races));
+    // Only auto-select the active race on the very first load.
+    // After that, preserve whatever the user has manually selected.
+    if (!loading && !initializedRef.current) {
+      initializedRef.current = true;
+      setActiveRaceId(getActiveRaceId(races));
+    }
   }, [loading, races]);
+
+  // If the currently selected race is deleted or no longer exists,
+  // fall back to the default active race gracefully.
+  useEffect(() => {
+    if (!loading && activeRaceId !== null) {
+      const still = races.find((r) => r.id === activeRaceId);
+      if (!still) setActiveRaceId(getActiveRaceId(races));
+    }
+  }, [races, loading, activeRaceId]);
 
   const activeRace = races.find((r) => r.id === activeRaceId) ?? null;
   const activePlannedWorkouts = activeRace
@@ -76,14 +91,16 @@ export default function App() {
   // ── Planned workout selection + edit save ─────────────
   const [selectedWorkoutId, setSelectedWorkoutId] = useState(null);
 
+  // Look up the workout across ALL plannedWorkouts (not just active race)
+  // so the modal can still open even if the user's view has changed.
   const selectedWorkout =
-    activePlannedWorkouts.find((pw) => pw.id === selectedWorkoutId) ?? null;
+    plannedWorkouts.find((pw) => pw.id === selectedWorkoutId) ?? null;
 
   function handleSelectWorkout(workout) { setSelectedWorkoutId(workout.id); }
   function handleCloseWorkoutModal()    { setSelectedWorkoutId(null); }
 
   async function handleSaveWorkout(id, patch) {
-    const existing = activePlannedWorkouts.find((pw) => pw.id === id);
+    const existing = plannedWorkouts.find((pw) => pw.id === id);
     if (!existing) throw new Error('Workout not found.');
     await updatePlannedWorkout(existing, patch);
     clearSnapshot();
@@ -163,7 +180,7 @@ export default function App() {
 
   // ── Recalculate plan ──────────────────────────────────
   const [recalculating, setRecalculating] = useState(false);
-  const [toast,         setToast]         = useState(null); // { message, actionLabel?, onAction? }
+  const [toast,         setToast]         = useState(null);
 
   async function handleRecalculate() {
     if (!activeRace) return;
@@ -363,7 +380,6 @@ export default function App() {
           {seedMsg && <p className={seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'}>{seedMsg}</p>}
           <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 3 attached logs + 1 unplanned log.</p>
 
-          {/* ── Import / Export ── */}
           <div className="import-export-section">
             <button
               type="button"

@@ -5,7 +5,6 @@ import 'leaflet-routing-machine';
 import { snapRoute } from '../api/routesApi.js';
 import './RouteSnapPanel.css';
 
-// Fix Leaflet broken marker icons in Vite builds
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon   from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -17,31 +16,42 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     markerShadow,
 });
 
-const CHICAGO    = [41.8781, -87.6298];
-const KM_TO_MI   = 0.621371;
+const CHICAGO  = [41.8781, -87.6298];
+const KM_TO_MI = 0.621371;
 
 /**
  * RouteSnapPanel
  *
- * UX mirrors onthegomap.com:
- *  - Click anywhere → snaps immediately to nearest foot path / trail / sidewalk
- *  - Route line extends live after each click
- *  - Drag any marker to adjust; route re-draws live
- *  - Double-click a marker to remove it
- *  - Live distance counter updates after every point
- *  - Fullscreen button expands the map panel
- *  - "Save Route to Workout" calls /routes/snap and prefills distance
- *
  * Props:
- *   onSnap {(result) => void}
+ *   onSnap          {(result) => void}      called with { distanceKm, geometry, waypoints, start, end }
+ *   savedGeometry   {GeoJSON | null}        draw saved route on load
+ *   savedDistanceKm {number | null}         pre-fill distance counter
+ *   savedWaypoints  {[{lat,lng}] | null}    restore ALL click points exactly
  */
-export default function RouteSnapPanel({ onSnap }) {
-  const [waypoints,    setWaypoints]    = useState([]);
-  const [liveDistance, setLiveDistance] = useState(null); // km
+export default function RouteSnapPanel({
+  onSnap,
+  savedGeometry   = null,
+  savedDistanceKm = null,
+  savedWaypoints  = null,
+}) {
+  // Restore full waypoint list from Dexie if available;
+  // fall back to nothing (blank map) if no waypoints saved yet.
+  const [waypoints,    setWaypoints]    = useState(() => savedWaypoints ?? []);
+  const [liveDistance, setLiveDistance] = useState(savedDistanceKm);
   const [saving,       setSaving]       = useState(false);
-  const [savedResult,  setSavedResult]  = useState(null);
-  const [errorMsg,     setErrorMsg]     = useState('');
-  const [fullscreen,   setFullscreen]   = useState(false);
+  const [savedResult,  setSavedResult]  = useState(
+    savedDistanceKm != null ? { distanceKm: savedDistanceKm } : null
+  );
+  const [errorMsg,  setErrorMsg]  = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // Re-initialise when a different workout is opened
+  useEffect(() => {
+    setWaypoints(savedWaypoints ?? []);
+    setLiveDistance(savedDistanceKm);
+    setSavedResult(savedDistanceKm != null ? { distanceKm: savedDistanceKm } : null);
+    setErrorMsg('');
+  }, [savedWaypoints, savedDistanceKm, savedGeometry]);
 
   function handleClear() {
     setWaypoints([]);
@@ -52,7 +62,6 @@ export default function RouteSnapPanel({ onSnap }) {
 
   function handleUndo() {
     setWaypoints((prev) => prev.slice(0, -1));
-    setSavedResult(null);
     setErrorMsg('');
   }
 
@@ -66,13 +75,16 @@ export default function RouteSnapPanel({ onSnap }) {
     setErrorMsg('');
     try {
       const result = await snapRoute(waypoints);
+      // Attach the full waypoint list to the result so the modal can persist it
+      result.waypoints = waypoints;
       setSavedResult(result);
+      setLiveDistance(result.distanceKm);
       onSnap?.(result);
     } catch (err) {
       if (err?.status === 503 || err?.message?.includes('503')) {
-        setErrorMsg('Backend routing engine unavailable — start the backend server first.');
+        setErrorMsg('Routing engine unavailable — check backend OSRM.');
       } else if (err?.message?.includes('fetch')) {
-        setErrorMsg('Cannot reach backend. Make sure the backend server is running, then try again.');
+        setErrorMsg('Cannot reach backend. Make sure the backend server is running.');
       } else {
         setErrorMsg(`Save failed: ${err.message}`);
       }
@@ -81,80 +93,49 @@ export default function RouteSnapPanel({ onSnap }) {
     }
   }
 
-  const mapHeight = fullscreen ? '100%' : '360px';
+  const hasRoute = waypoints.length >= 2;
 
   return (
     <div className={`rsp${fullscreen ? ' rsp--fullscreen' : ''}`}>
 
-      {/* ── Toolbar ─────────────────────────────────────── */}
+      {/* ── Toolbar ── */}
       <div className="rsp__toolbar">
         <span className="rsp__distance-display">
           {liveDistance != null
             ? <>
-                <strong>{liveDistance.toFixed(2)} km</strong>
-                <span className="rsp__distance-mi"> ({(liveDistance * KM_TO_MI).toFixed(2)} mi)</span>
+                <strong>{Number(liveDistance).toFixed(2)} km</strong>
+                <span className="rsp__distance-mi">
+                  {' '}({(Number(liveDistance) * KM_TO_MI).toFixed(2)} mi)
+                </span>
+                {savedResult && <span className="rsp__distance-saved"> ✓ saved</span>}
               </>
             : <span className="rsp__distance-empty">
-                {waypoints.length === 0 ? 'Click map to start route' : 'Add one more point to measure'}
+                {waypoints.length === 0
+                  ? 'Click the map to start your route'
+                  : 'Add one more point to measure'}
               </span>
           }
         </span>
         <div className="rsp__actions">
-          <button
-            type="button"
-            className="rsp__btn rsp__btn--ghost"
-            onClick={handleUndo}
-            disabled={waypoints.length === 0}
-            title="Undo last point (Ctrl+Z)"
-          >
-            ↩ Undo
-          </button>
-          <button
-            type="button"
-            className="rsp__btn rsp__btn--ghost"
-            onClick={handleClear}
-            disabled={waypoints.length === 0}
-            title="Clear all points"
-          >
-            🗑 Clear
-          </button>
-          <button
-            type="button"
-            className="rsp__btn rsp__btn--fullscreen"
-            onClick={() => setFullscreen((v) => !v)}
-            title={fullscreen ? 'Exit fullscreen' : 'Fullscreen map'}
-          >
+          <button type="button" className="rsp__btn rsp__btn--ghost" onClick={handleUndo} disabled={waypoints.length === 0} title="Remove last point">↩ Undo</button>
+          <button type="button" className="rsp__btn rsp__btn--ghost" onClick={handleClear} disabled={waypoints.length === 0} title="Clear all points">🗑 Clear</button>
+          <button type="button" className="rsp__btn rsp__btn--fullscreen" onClick={() => setFullscreen((v) => !v)}>
             {fullscreen ? '⛶ Exit' : '⛶ Fullscreen'}
           </button>
-          <button
-            type="button"
-            className="rsp__btn rsp__btn--primary"
-            onClick={handleSave}
-            disabled={saving || waypoints.length < 2}
-            title="Save snapped route to this workout's distance field"
-          >
-            {saving ? 'Saving…' : '✓ Save Route to Workout'}
+          <button type="button" className="rsp__btn rsp__btn--primary" onClick={handleSave} disabled={saving || !hasRoute}>
+            {saving ? 'Saving…' : savedResult ? '↺ Update Route' : '✓ Save Route to Workout'}
           </button>
         </div>
       </div>
 
-      {/* ── Map ─────────────────────────────────────────── */}
-      <div className="rsp__map-wrap" style={{ height: mapHeight }}>
+      {/* ── Map ── */}
+      <div className="rsp__map-wrap" style={{ height: fullscreen ? '100%' : '360px' }}>
         <MapContainer
           center={CHICAGO}
           zoom={14}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom
-          zoomControl
         >
-          {/*
-            Stadia "Alidade Smooth" tile style:
-            - Green parks, gardens, grass areas
-            - Blue rivers, lakes, water bodies
-            - Light grey car roads (de-emphasised)
-            - Footpaths, cycle tracks, and trails rendered distinctly
-            - Clean, uncluttered background
-          */}
           <TileLayer
             url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -164,36 +145,27 @@ export default function RouteSnapPanel({ onSnap }) {
             waypoints={waypoints}
             onWaypointsChange={setWaypoints}
             onDistanceChange={setLiveDistance}
+            savedDistanceKm={savedDistanceKm}
           />
         </MapContainer>
       </div>
 
-      {/* ── Legend ──────────────────────────────────────── */}
       <p className="rsp__hint">
         🟢 Start &nbsp;·&nbsp; 🔴 Finish &nbsp;·&nbsp;
-        Route follows <strong>foot paths, sidewalks &amp; trails</strong> only &nbsp;·&nbsp;
-        Drag markers to adjust &nbsp;·&nbsp; Double-click to remove a point
+        Foot paths, sidewalks &amp; trails only &nbsp;·&nbsp;
+        Drag markers to adjust &nbsp;·&nbsp; Double-click to remove
+        {savedResult && <> &nbsp;·&nbsp; <strong>Route saved — drag or add points, then click ↺ Update Route</strong></>}
       </p>
 
-      {errorMsg && (
-        <div className="rsp__error">
-          <strong>⚠ {errorMsg}</strong>
-          {errorMsg.includes('backend') && (
-            <p className="rsp__error-sub">
-              Note: the live map preview works without the backend. Only "Save Route to Workout"
-              needs the backend running to persist the route distance.
-            </p>
-          )}
-        </div>
-      )}
+      {errorMsg && <div className="rsp__error"><strong>⚠ {errorMsg}</strong></div>}
 
       {savedResult && (
         <div className="rsp__result">
           <span className="rsp__result-icon">✓</span>
           <span>
             Route saved &nbsp;·&nbsp;
-            <strong>{savedResult.distanceKm.toFixed(2)} km</strong>
-            {' '}({(savedResult.distanceKm * KM_TO_MI).toFixed(2)} mi)
+            <strong>{Number(savedResult.distanceKm).toFixed(2)} km</strong>
+            {' '}({(Number(savedResult.distanceKm) * KM_TO_MI).toFixed(2)} mi)
             <span className="rsp__result-sub"> — distance field updated</span>
           </span>
         </div>
@@ -204,7 +176,7 @@ export default function RouteSnapPanel({ onSnap }) {
 
 // ── RoutingLayer ──────────────────────────────────────────────────────────────
 
-function RoutingLayer({ waypoints, onWaypointsChange, onDistanceChange }) {
+function RoutingLayer({ waypoints, onWaypointsChange, onDistanceChange, savedDistanceKm }) {
   const map          = useMap();
   const routingRef   = useRef(null);
   const markersRef   = useRef([]);
@@ -212,7 +184,28 @@ function RoutingLayer({ waypoints, onWaypointsChange, onDistanceChange }) {
 
   useEffect(() => { waypointsRef.current = waypoints; }, [waypoints]);
 
-  // ── Click → add waypoint ──────────────────────────────
+  // Fit map bounds to initial waypoints on first render (when restoring saved route)
+  const fittedRef = useRef(false);
+  useEffect(() => {
+    if (fittedRef.current || waypoints.length < 2) return;
+    fittedRef.current = true;
+    const bounds = L.latLngBounds(waypoints.map((wp) => [wp.lat, wp.lng]));
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [48, 48] });
+  }, [waypoints, map]);
+
+  // When waypoints are cleared (length drops to 0), allow re-fitting next time
+  useEffect(() => {
+    if (waypoints.length === 0) fittedRef.current = false;
+  }, [waypoints.length]);
+
+  // Pre-fill distance counter from saved value before LRM calculates
+  useEffect(() => {
+    if (savedDistanceKm != null && waypoints.length >= 2) {
+      onDistanceChange(savedDistanceKm);
+    }
+  }, [savedDistanceKm]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Click to add waypoint ─────────────────────────────
   const handleMapClick = useCallback((e) => {
     const next = [...waypointsRef.current, { lat: e.latlng.lat, lng: e.latlng.lng }];
     onWaypointsChange(next);
@@ -223,7 +216,7 @@ function RoutingLayer({ waypoints, onWaypointsChange, onDistanceChange }) {
     return () => map.off('click', handleMapClick);
   }, [map, handleMapClick]);
 
-  // ── Numbered draggable markers ────────────────────────
+  // ── Draggable numbered markers ────────────────────────
   useEffect(() => {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
@@ -264,7 +257,7 @@ function RoutingLayer({ waypoints, onWaypointsChange, onDistanceChange }) {
     };
   }, [waypoints, map, onWaypointsChange]);
 
-  // ── LRM route line ────────────────────────────────────
+  // ── LRM live route line ───────────────────────────────
   useEffect(() => {
     if (waypoints.length < 2) {
       if (routingRef.current) {
@@ -281,25 +274,22 @@ function RoutingLayer({ waypoints, onWaypointsChange, onDistanceChange }) {
       routingRef.current.setWaypoints(lLatLngs);
     } else {
       routingRef.current = L.Routing.control({
-        waypoints,
+        waypoints:          lLatLngs,
         routeWhileDragging: true,
         addWaypoints:       false,
         draggableWaypoints: false,
-        fitSelectedRoutes:  true,
+        fitSelectedRoutes:  false,
         showAlternatives:   false,
         createMarker:       () => null,
         lineOptions: {
           styles: [
-            { color: '#ffffff', weight: 7,  opacity: 0.75 },  // white halo
-            { color: '#22c55e', weight: 4,  opacity: 1.0  },  // green route
+            { color: '#ffffff', weight: 7,  opacity: 0.75 },
+            { color: '#22c55e', weight: 4,  opacity: 1.0  },
           ],
           extendToWaypoints:     true,
           missingRouteTolerance: 0,
         },
         router: L.Routing.osrmv1({
-          // ✅ routing.openstreetmap.de/routed-foot — dedicated foot/pedestrian
-          // OSRM server. Uses OSM foot profile: sidewalks, footpaths, trails.
-          // Does NOT route along car roads or highways.
           serviceUrl: 'https://routing.openstreetmap.de/routed-foot/route/v1',
           profile:    'foot',
         }),
@@ -312,12 +302,11 @@ function RoutingLayer({ waypoints, onWaypointsChange, onDistanceChange }) {
         if (el) el.style.display = 'none';
       });
 
-      routingRef.current.on('routingerror', () => {
-        onDistanceChange(null);
-      });
+      routingRef.current.on('routingerror', () => onDistanceChange(null));
     }
   }, [waypoints, map, onDistanceChange]);
 
+  // ── Cleanup on unmount ────────────────────────────────
   useEffect(() => {
     return () => {
       if (routingRef.current) {

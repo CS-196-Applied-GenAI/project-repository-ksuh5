@@ -1,24 +1,19 @@
 import Dexie from 'dexie';
 
-/**
- * Single Dexie database instance for the Training Planner app.
- *
- * Tables (v1):
- *   races           – Race records
- *   plannedWorkouts – PlannedWorkout records (belong to a race)
- *   workoutLogs     – WorkoutLog records (optional link to a plannedWorkout)
- *
- * Key principle: Dexie is persistence; React state is the UI cache.
- * Every mutation writes to Dexie first, then updates React state.
- */
-const db = new Dexie('TrainingPlannerDB2');
+const db = new Dexie('TrainingPlannerDB');
 
 db.version(1).stores({
-  // Primary key first, then indexed columns.
-  // All other fields are stored but not indexed.
-  races: 'id, status, name',
-  plannedWorkouts: 'id, raceId, date, type',
-  workoutLogs: 'id, plannedWorkoutId, date, type',
+  races:           '&id, status',
+  plannedWorkouts: '&id, raceId, date',
+  workoutLogs:     '&id, plannedWorkoutId, date',
+});
+
+// Version 2 — add routeGeometry field to plannedWorkouts
+// Dexie only needs index entries here; non-indexed fields are stored automatically
+db.version(2).stores({
+  races:           '&id, status',
+  plannedWorkouts: '&id, raceId, date',
+  workoutLogs:     '&id, plannedWorkoutId, date',
 });
 
 export default db;

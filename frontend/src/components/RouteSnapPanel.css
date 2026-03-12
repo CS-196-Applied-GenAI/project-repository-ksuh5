@@ -38,6 +38,15 @@
   color: #6b7280;
   margin-left: 0.25rem;
 }
+.rsp__distance-saved {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #16a34a;
+  margin-left: 0.4rem;
+  background: #dcfce7;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+}
 .rsp__distance-empty {
   font-size: 0.82rem;
   font-weight: 400;
@@ -95,12 +104,11 @@
   border: 1px solid #d1d5db;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
-  /* When fullscreen, fill remaining vertical space */
   flex: 1 1 auto;
   min-height: 280px;
 }
 .rsp--fullscreen .rsp__map-wrap {
-  height: 0;             /* flex will override with flex: 1 */
+  height: 0;
   min-height: 0;
   border-radius: 6px;
 }
@@ -122,12 +130,6 @@
   background: #fef2f2;
   border-radius: 6px;
   border: 1px solid #fecaca;
-}
-.rsp__error-sub {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin: 0.3rem 0 0;
-  font-weight: 400;
 }
 
 /* ── Save result banner ── */
@@ -163,10 +165,10 @@
   user-select: none;
 }
 .rsp-pin:active   { cursor: grabbing; }
-.rsp-pin--start   { background: #16a34a; }   /* green  */
-.rsp-pin--end     { background: #dc2626; }   /* red    */
+.rsp-pin--start   { background: #16a34a; }
+.rsp-pin--end     { background: #dc2626; }
 
-/* ── Suppress LRM turn-by-turn panel entirely ── */
+/* ── Suppress LRM turn-by-turn panel ── */
 .leaflet-routing-container,
 .leaflet-routing-container * {
   display: none !important;
