@@ -79,8 +79,7 @@
   gap: 0.6rem;
   padding-top: 0.25rem;
 }
-
-/* existing styles stay as-is — add these below */
+/* ── existing styles stay — append these ── */
 
 .add-workout-row--route {
   display: flex;
@@ -103,4 +102,11 @@
   border: 1px solid #bbf7d0;
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
+}
+
+.add-workout-distance-source {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #16a34a;
+  margin-left: 0.25rem;
 }
