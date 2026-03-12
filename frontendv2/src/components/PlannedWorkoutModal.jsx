@@ -1,18 +1,20 @@
 /**
- * PlannedWorkoutModal  (Step 9 + Step 10 edit: no auto-lock)
+ * PlannedWorkoutModal  (Step 11: real logs section)
  *
  * Props:
- *   workout   {PlannedWorkout | null}
- *   isOpen    {boolean}
- *   onClose   {() => void}
- *   onSave    {(id: string, patch: object) => Promise<void>}
+ *   workout      {PlannedWorkout | null}
+ *   workoutLogs  {WorkoutLog[]}          all logs (filtering done here)
+ *   isOpen       {boolean}
+ *   onClose      {() => void}
+ *   onSave       {(id: string, patch: object) => Promise<void>}
  */
 import { useState, useEffect } from 'react';
 import { displayWorkoutType, isQualityType, ALL_WORKOUT_TYPES } from '../domain/workoutTypes.js';
-import { normaliseWorkoutForm } from '../domain/workoutHelpers.js';   // ← was ./workoutHelpers.js
+import { normaliseWorkoutForm } from '../domain/workoutHelpers.js';
+import { getLogsForPlanned, logSummary, formatLogTime } from '../domain/logHelpers.js';
 import './PlannedWorkoutModal.css';
 
-export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }) {
+export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen, onClose, onSave }) {
   const [form,    setForm]    = useState(null);
   const [dirty,   setDirty]   = useState(false);
   const [saving,  setSaving]  = useState(false);
@@ -38,6 +40,9 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
 
   if (!isOpen || !workout || !form) return null;
 
+  // Derive sorted logs for this planned workout
+  const attachedLogs = getLogsForPlanned(workoutLogs, workout.id);
+
   const quality   = isQualityType(form.type);
   const typeLabel = displayWorkoutType(form.type);
 
@@ -54,7 +59,6 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
     setSaving(true);
     setSaveErr('');
     try {
-      // Include the current locked value from the form (controlled by checkbox)
       const patch = { ...normaliseWorkoutForm(form), locked: form.locked };
       await onSave(workout.id, patch);
       onClose();
@@ -234,10 +238,24 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
               </label>
             </div>
 
-            {/* Logs placeholder */}
-            <div className="pw-modal-section pw-modal-logs-placeholder">
-              <h3 className="pw-modal-section-title">Workout logs</h3>
-              <p className="pw-modal-empty-hint">Log display coming in Step 11.</p>
+            {/* ── Logs section ─────────────────────── */}
+            <div className="pw-modal-section pw-logs-section">
+              <h3 className="pw-modal-section-title">
+                Workout logs
+                {attachedLogs.length > 0 && (
+                  <span className="pw-logs-count">{attachedLogs.length}</span>
+                )}
+              </h3>
+
+              {attachedLogs.length === 0 ? (
+                <p className="pw-modal-empty-hint">No logs yet for this workout.</p>
+              ) : (
+                <ul className="pw-log-list">
+                  {attachedLogs.map((log) => (
+                    <LogEntry key={log.id} log={log} />
+                  ))}
+                </ul>
+              )}
             </div>
 
             {saveErr && <p className="field-error save-error">{saveErr}</p>}
@@ -256,6 +274,28 @@ export default function PlannedWorkoutModal({ workout, isOpen, onClose, onSave }
 
       </div>
     </div>
+  );
+}
+
+// ── LogEntry sub-component ────────────────────────────────
+
+function LogEntry({ log }) {
+  const summary  = logSummary(log);
+  const timeStr  = formatLogTime(log.time);
+  const typeLabel = log.type
+    ? log.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : '';
+
+  return (
+    <li className="pw-log-entry">
+      <div className="pw-log-entry__header">
+        <span className="pw-log-entry__date">{log.date}</span>
+        {timeStr && <span className="pw-log-entry__time">{timeStr}</span>}
+        <span className="pw-log-entry__type">{typeLabel}</span>
+      </div>
+      {summary && <p className="pw-log-entry__summary">{summary}</p>}
+      {log.notes && <p className="pw-log-entry__notes">{log.notes}</p>}
+    </li>
   );
 }
 

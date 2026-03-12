@@ -3,8 +3,7 @@ import { useAppData }           from './hooks/useAppData.js';
 import { seedSampleData }       from './db/seed.js';
 import { formatCount }          from './utils/formatters.js';
 import { getActiveRaceId, getActiveRace, makeRace }  from './domain/raceHelpers.js';
-import { today, addDays, startOfMonth, addMonths }   from './domain/calendarHelpers.js';
-import { groupPlannedByDate }                         from './domain/calendarHelpers.js';
+import { today, addDays, startOfMonth, addMonths, groupPlannedByDate } from './domain/calendarHelpers.js';
 import { shouldConfirmDrop }                          from './domain/workoutHelpers.js';
 import {
   createRaceEnforcingSingleActive,
@@ -66,31 +65,17 @@ export default function App() {
     await reload();
   }
 
-  // ── Drag/drop state machine ───────────────────────────
-  //
-  // pendingDrop holds { workoutId, targetDate } while ConfirmDropModal is open.
+  // ── Drag/drop ─────────────────────────────────────────
   const [pendingDrop, setPendingDrop] = useState(null);
-
-  // groupPlannedByDate is pure — compute once for the drop handler
   const byDate = groupPlannedByDate(activePlannedWorkouts);
 
-  /**
-   * Called by DayCell when a workout is dropped onto a date.
-   * If the target date already has workouts → show confirm modal.
-   * Otherwise → move immediately.
-   */
   async function handleDropWorkout(workoutId, targetDate) {
     const workout = activePlannedWorkouts.find((pw) => pw.id === workoutId);
     if (!workout) return;
-
-    // Dropping onto the same date → no-op
     if (workout.date === targetDate) return;
 
-    // Count existing workouts on target (excluding the dragged one)
     const existing = (byDate[targetDate] ?? []).filter((pw) => pw.id !== workoutId);
-
     if (shouldConfirmDrop(existing.length)) {
-      // Park the intent and ask the user
       setPendingDrop({ workoutId, targetDate });
     } else {
       await doMoveWorkout(workoutId, targetDate);
@@ -111,10 +96,7 @@ export default function App() {
     await doMoveWorkout(workoutId, targetDate);
   }
 
-  function handleCancelDrop() {
-    setPendingDrop(null);
-    // Nothing is moved — original date stays
-  }
+  function handleCancelDrop() { setPendingDrop(null); }
 
   // ── Race creation ─────────────────────────────────────
   const [raceModalOpen,     setRaceModalOpen]     = useState(false);
@@ -154,7 +136,7 @@ export default function App() {
     finally { setSeeding(false); }
   }
 
-  // ── Confirm drop info ─────────��───────────────────────
+  // ── Confirm drop info ─────────────────────────────────
   const confirmDropCount = pendingDrop
     ? (byDate[pendingDrop.targetDate] ?? [])
         .filter((pw) => pw.id !== pendingDrop.workoutId).length
@@ -165,7 +147,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 10 — Drag/drop rescheduling ✓</p>
+        <p className="app-status">Step 11 — Workout logs in modal ✓</p>
       </header>
 
       <main className="app-main">
@@ -256,11 +238,10 @@ export default function App() {
           {seedMsg && (
             <p className={seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'}>{seedMsg}</p>
           )}
-          <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 1 log.</p>
+          <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 3 attached logs (sortable) + 1 unplanned log.</p>
         </section>
       </main>
 
-      {/* ── Modals ───────────────────────────────── */}
       <RaceModal
         isOpen={raceModalOpen}
         onClose={() => setRaceModalOpen(false)}
@@ -271,8 +252,10 @@ export default function App() {
         existingRaceName={getActiveRace(races)?.name ?? ''}
         onDecide={handleConflictDecision}
       />
+      {/* workoutLogs passed so modal can filter + sort its own attached logs */}
       <PlannedWorkoutModal
         workout={selectedWorkout}
+        workoutLogs={workoutLogs}
         isOpen={selectedWorkoutId !== null}
         onClose={handleCloseWorkoutModal}
         onSave={handleSaveWorkout}

@@ -7,7 +7,6 @@
 /* ── Box sizing ──────────────────────────────────────────── */
 .pw-modal-box {
   max-width: 520px;
-  /* allow the form to scroll on small screens */
   max-height: 92vh;
   display: flex;
   flex-direction: column;
@@ -106,7 +105,7 @@
   flex-shrink: 0;
 }
 
-/* ── Logs placeholder ────────────────────────────────────── */
+/* ── Section heading shared ──────────────────────────────── */
 .pw-modal-section {
   display: flex;
   flex-direction: column;
@@ -120,12 +119,33 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #a0aec0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-.pw-modal-logs-placeholder {
-  border: 1px dashed #cbd5e0;
-  border-radius: 7px;
-  padding: 0.6rem 0.75rem;
+/* ── Logs section ────────────────────────────────────────── */
+.pw-logs-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  gap: 0.5rem;
+}
+
+.pw-logs-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #4299e1;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .pw-modal-empty-hint {
@@ -133,6 +153,76 @@
   font-size: 0.8rem;
   color: #a0aec0;
   font-style: italic;
+}
+
+/* ── Log list ────────────────────────────────────────────── */
+.pw-log-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* ── Log entry ───────────────────────────────────────────── */
+.pw-log-entry {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pw-log-entry__header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.pw-log-entry__date {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2d3748;
+  font-variant-numeric: tabular-nums;
+}
+
+.pw-log-entry__time {
+  font-size: 0.75rem;
+  color: #718096;
+  font-variant-numeric: tabular-nums;
+}
+
+.pw-log-entry__time::before {
+  content: '@ ';
+}
+
+.pw-log-entry__type {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4a5568;
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
+  white-space: nowrap;
+}
+
+.pw-log-entry__summary {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #4a5568;
+}
+
+.pw-log-entry__notes {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #718096;
+  font-style: italic;
+  white-space: pre-wrap;
+  line-height: 1.45;
 }
 
 /* ── Footer ──────────────────────────────────────────────── */

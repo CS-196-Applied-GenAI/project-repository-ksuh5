@@ -56,7 +56,7 @@ Constraints:
 
 Testing:
 - Add Vitest now (lightweight): configure `npm run test`.
-- Add at least one unit test (pure) that doesn’t depend on Dexie, e.g. a helper that formats counts or returns a boolean. Keep it trivial—this step is about wiring Dexie, not full logic.
+- Add at least one unit test (pure) that doesn't depend on Dexie, e.g. a helper that formats counts or returns a boolean. Keep it trivial—this step is about wiring Dexie, not full logic.
 
 Wiring:
 - Ensure the seed button is visible in the running app and actually seeds data.
@@ -102,11 +102,11 @@ Testing (Vitest):
   - date helper correctness (week starts Monday)
 
 Wiring:
-- Use at least one domain helper in the UI so it’s not orphaned:
+- Use at least one domain helper in the UI so it's not orphaned:
   - e.g., display the active race status label using `displayWorkoutType` somewhere is wrong; instead show planned workout type labels when you render a sample planned workout list (you can add a tiny section under counts).
 
 Constraints:
-- Keep changes minimal; don’t build calendar UI yet.
+- Keep changes minimal; don't build calendar UI yet.
 
 Output:
 - Provide file diffs or full contents of new domain files and their tests.
@@ -130,7 +130,7 @@ Goal:
 Implementation details:
 - Add `RaceStatus` enum/object to `src/domain/`.
 - Store `activeRaceId` in React state.
-- Ensure selection is persisted in Dexie by virtue of the race status (active). You don’t need a separate settings table.
+- Ensure selection is persisted in Dexie by virtue of the race status (active). You don't need a separate settings table.
 
 Testing:
 - Add a pure helper `getActiveRace(races)` or `getActiveRaceId(races)` and test it:
@@ -172,7 +172,7 @@ Wiring:
 - Ensure modal closes on cancel and after create.
 
 Constraints:
-- Do not implement archive/complete prompt yet (that’s next step).
+- Do not implement archive/complete prompt yet (that's next step).
 
 Output:
 - Updated UI shows new race and persisted on refresh.
@@ -401,7 +401,7 @@ Testing:
 
 Wiring:
 - Seed button should optionally seed multiple logs to visually confirm sorting.
-- No “add log” yet in this step.
+- No "add log" yet in this step.
 
 Output:
 - Logs appear in planned workout modal sorted correctly.
@@ -416,27 +416,91 @@ Step 12: Add logs flows (from `frontplan.md` Step 12)
 
 Goal:
 - Add "Add another log" button inside PlannedWorkoutModal:
-  - opens LogWorkoutModal prefilled and attaches plannedWorkoutId.
-- Add a global "+ Log workout" button:
-  - opens LogWorkoutModal with plannedWorkoutId null.
-- Save writes to Dexie and updates UI.
+  - opens LogWorkoutModal prefilled with the planned workout's date and type,
+    and attaches plannedWorkoutId.
+- Add a global "+ Log workout" button in the top bar / App:
+  - opens LogWorkoutModal with plannedWorkoutId null (unplanned).
+- Save writes to Dexie using the same write-through path as every other
+  mutation, and then calls reload() so React state stays in sync.
+
+Schema contract — every WorkoutLog written to Dexie MUST have exactly
+these fields (matching seed.js and the Dexie schema):
+  id             string   (crypto.randomUUID())
+  plannedWorkoutId  string | null
+  date           string   (YYYY-MM-DD, required)
+  time           string | null  (HH:MM — empty string must be normalised to null)
+  type           string   (same enum as PlannedWorkout.type)
+  distance       number | null  (parse from form; empty string → null)
+  durationMinutes  number | null  (parse from form; empty string → null)
+  notes          string   (default "")
+  createdAt      string   (ISO timestamp, set once at creation)
+  updatedAt      string   (ISO timestamp, updated on every save)
 
 Implementation:
-- Create pure helper `normalizeLogFormInput(formState)` to:
-  - convert "" to null for time
-  - parse numbers
-  - ensure required date/type
-- Use `compareLogsChronological` for display.
+1. Pure factory helper `makeLog(fields)` in `src/domain/logHelpers.js`:
+   - Accepts: { plannedWorkoutId, date, type, time?, distance?,
+                durationMinutes?, notes? }
+   - Sets: id = crypto.randomUUID(), createdAt = updatedAt = new Date().toISOString()
+   - Normalises: time "" → null, distance/"" → null (Number or null),
+                 durationMinutes/"" → null (Number or null), notes ?? ""
+   - Returns a complete WorkoutLog object ready for db.workoutLogs.put().
+
+2. Pure normaliser `normalizeLogFormInput(formState)` in `src/domain/logHelpers.js`:
+   - Converts raw form strings to the typed values makeLog expects.
+   - Rules: time "" → null; distance/durationMinutes "" → null, else Number(v).
+   - Ensures date and type are non-empty strings.
+
+3. Mutation helper `upsertWorkoutLog(log)` already exists in `src/db/mutations.js`
+   (added in Step 1). Call it after makeLog — do NOT write to db.workoutLogs directly
+   from the component.
+
+4. In App.jsx add handler:
+     async function handleSaveLog(formState) {
+       const fields = normalizeLogFormInput(formState);
+       const log    = makeLog(fields);
+       await upsertWorkoutLog(log);   // write-through via mutations.js
+       await reload();                // keep React state in sync with Dexie
+     }
+   Pass handleSaveLog as onSave to LogWorkoutModal.
+
+5. LogWorkoutModal component (`src/components/LogWorkoutModal.jsx`):
+   - Fields: date (required), type (required), time (optional HH:MM),
+             distance (optional number), durationMinutes (optional number),
+             notes (optional textarea).
+   - When opened from "Add another log": prefill date from planned workout,
+     prefill type from planned workout, plannedWorkoutId set to workout.id.
+   - When opened from "+ Log workout": all fields empty/default,
+     plannedWorkoutId = null.
+   - On submit: calls onSave(formState); on success closes modal.
+   - On cancel / Escape: closes without saving.
 
 Testing:
-- Unit tests for normalizeLogFormInput.
-- Component test optional: opening modal and saving adds to list (if feasible).
+- Unit tests for makeLog:
+  - has id, createdAt, updatedAt fields
+  - time "" is normalised to null
+  - distance "" is normalised to null
+  - durationMinutes "" is normalised to null
+  - plannedWorkoutId is passed through (null or string)
+- Unit tests for normalizeLogFormInput:
+  - time "" → null
+  - distance "3.1" → 3.1
+  - durationMinutes "" → null
+  - date and type required (throw or return error if missing)
+- Component test (optional): opening modal and saving calls onSave with
+  correct normalised fields.
 
 Wiring:
-- Ensure attached logs appear immediately in planned workout modal after adding.
+- After saving an attached log, it must appear immediately in the Logs
+  section of the open PlannedWorkoutModal (reload() + workoutLogs re-filter
+  handles this automatically).
+- After saving an unplanned log, the workoutLogs count in the IndexedDB
+  counts section increments.
+- Verify in DevTools → IndexedDB → workoutLogs that the saved record has
+  the exact schema fields listed above (no empty strings for time/distance).
 
 Output:
-- Manual steps for adding attached and unplanned logs.
+- Manual steps for adding an attached log and an unplanned log.
+- Show that refreshing the page preserves both logs (Dexie persistence).
 - Tests pass.
 ```
 
