@@ -50,6 +50,7 @@ describe('Toast', () => {
   });
 
   test('auto-dismisses after 5 seconds', () => {
+    // useFakeTimers MUST be called before render so setTimeout is intercepted
     vi.useFakeTimers();
     const onDismiss = vi.fn();
     render(<Toast message="Plan recalculated" onDismiss={onDismiss} />);

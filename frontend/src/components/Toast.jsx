@@ -1,29 +1,46 @@
-import React from 'react';
+import { useEffect } from 'react';
 
 /**
- * Toast – lightweight notification banner.
+ * Toast notification with optional action button.
+ * Auto-dismisses after 5 seconds.
  *
- * Props:
- *   message  {string}   – text to display
- *   type     {string}   – 'success' | 'error' | 'info'  (default: 'info')
- *   onClose  {function} – called when the dismiss button is clicked
+ * @param {object}   props
+ * @param {string}   props.message       - Text to display
+ * @param {string}   [props.actionLabel] - Label for the action button (optional)
+ * @param {Function} [props.onAction]    - Callback when action button is clicked (optional)
+ * @param {Function} props.onDismiss     - Callback when toast is dismissed (auto or manual)
  */
-export default function Toast({ message, type = 'info', onClose }) {
-  if (!message) return null;
+export default function Toast({ message, actionLabel, onAction, onDismiss }) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onDismiss();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [onDismiss]);
 
   return (
-    <div className={`toast toast--${type}`} role="alert">
+    <div className="toast" role="status" aria-live="polite">
       <span className="toast__message">{message}</span>
-      {onClose && (
+      {actionLabel && onAction && (
         <button
           type="button"
-          className="toast__close"
-          aria-label="Dismiss"
-          onClick={onClose}
+          className="toast__action"
+          onClick={() => {
+            onAction();
+            onDismiss();
+          }}
         >
-          ×
+          {actionLabel}
         </button>
       )}
+      <button
+        type="button"
+        className="toast__close"
+        aria-label="Dismiss"
+        onClick={onDismiss}
+      >
+        ✕
+      </button>
     </div>
   );
 }

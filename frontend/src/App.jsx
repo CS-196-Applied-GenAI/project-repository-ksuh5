@@ -23,8 +23,10 @@ import AddWorkoutModal     from './components/AddWorkoutModal.jsx';
 import Toast               from './components/Toast.jsx';
 import { checkHealth }     from './api/healthApi.js';
 import { recalculatePlan } from './api/recalcApi.js';
+import { exportCsv }       from './api/csvApi.js';
 import { setSnapshot, getSnapshot, clearSnapshot } from './state/undoStore.js';
-import { db }              from './db/db.js';
+import { downloadTextFile } from './utils/downloadFile.js';
+import db                  from './db/db.js';
 import './App.css';
 
 
@@ -190,6 +192,26 @@ export default function App() {
     clearSnapshot();
   }
 
+  // ── CSV Export ────────────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportCsv() {
+    if (!activeRace) return;
+    setExporting(true);
+    try {
+      const result = await exportCsv({
+        plannedWorkouts: activePlannedWorkouts,
+        workoutLogs,
+      });
+      downloadTextFile('planned_workouts.csv', result.plannedWorkoutsCsv);
+      downloadTextFile('workout_logs.csv',     result.workoutLogsCsv);
+    } catch (err) {
+      setToast({ message: `Export failed: ${err.message}` });
+    } finally {
+      setExporting(false);
+    }
+  }
+
   // ── Seed ──────────────────────────────────────────────
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
@@ -250,9 +272,17 @@ export default function App() {
                       type="button"
                       className="btn-recalculate"
                       onClick={handleRecalculate}
-                      disabled={recalculating || !activeRace}
+                      disabled={recalculating}
                     >
                       {recalculating ? 'Recalculating…' : '🔁 Recalculate Plan'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-export"
+                      onClick={handleExportCsv}
+                      disabled={exporting}
+                    >
+                      {exporting ? 'Exporting…' : '⬇ Export CSV'}
                     </button>
                     <button
                       type="button"
