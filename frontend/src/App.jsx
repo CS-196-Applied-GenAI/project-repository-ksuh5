@@ -1,5 +1,6 @@
 import { useState, useEffect }  from 'react';
 import { useAppData }           from './hooks/useAppData.js';
+import { useAutoSave }          from './hooks/useAutoSave.js';
 import { seedSampleData }       from './db/seed.js';
 import { formatCount }          from './utils/formatters.js';
 import { getActiveRaceId, getActiveRace, makeRace }  from './domain/raceHelpers.js';
@@ -34,6 +35,9 @@ import './App.css';
 export default function App() {
   const { races, plannedWorkouts, workoutLogs, loading, error, reload } =
     useAppData();
+
+  // ── Auto-save ─────────────────────────────────────────
+  useAutoSave({ races, plannedWorkouts, workoutLogs });
 
   // ── Backend health ────────────────────────────────────
   const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'ok' | 'offline'
