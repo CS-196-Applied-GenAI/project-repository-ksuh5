@@ -1,92 +1,91 @@
-import { useMemo } from 'react';
-import { useCompletedPlannedWorkouts } from '../hooks/useCompletedPlannedWorkouts.js';
+/**
+ * RunStatsPanel
+ *
+ * Shows weekly and monthly run statistics below the calendar.
+ *
+ * Props:
+ *   plannedWorkouts  {PlannedWorkout[]}
+ *   anchor           {string}   YYYY-MM-DD  — current calendar anchor
+ *   calView          {'week'|'month'}
+ */
+import { getWeekDays, startOfMonth, addMonths } from '../domain/calendarHelpers.js';
 import './RunStatsPanel.css';
 
 const KM_TO_MI = 0.621371;
 
-export default function RunStatsPanel({ title = '', plannedWorkouts = [], mode = 'week' }) {
-  const { completedIds } = useCompletedPlannedWorkouts();
+function getMonthDays(anchor) {
+  const [y, m] = anchor.split('-').map(Number);
+  const start = new Date(y, m - 1, 1);
+  const end   = new Date(y, m, 0);
+  const days  = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
 
-  const stats = useMemo(() => {
-    const runs = plannedWorkouts.filter((pw) => pw.type !== 'rest');
+function calcStats(workouts, dates) {
+  const set = new Set(dates);
+  const inRange = workouts.filter((pw) => set.has(pw.date));
+  const total   = inRange.length;
+  const completed = inRange.filter((pw) => pw.completed).length;
+  const distanceKm = inRange.reduce((sum, pw) => {
+    const d = pw.routeDistanceKm ?? pw.distance ?? 0;
+    return sum + Number(d);
+  }, 0);
+  const durationMin = inRange.reduce((sum, pw) => sum + (pw.durationMinutes ?? 0), 0);
+  return { total, completed, distanceKm, durationMin };
+}
 
-    const totalKm = sumKm(runs);
-    const totalMin = sumMin(runs);
-
-    const completedRuns = runs.filter((pw) => completedIds.has(pw.id));
-    const completedKm = sumKm(completedRuns);
-    const completedMin = sumMin(completedRuns);
-
-    const pct = totalKm > 0 ? (completedKm / totalKm) * 100 : 0;
-
-    return {
-      workouts: runs.length,
-      totalKm,
-      totalMin,
-      completedWorkouts: completedRuns.length,
-      completedKm,
-      completedMin,
-      pct,
-    };
-  }, [plannedWorkouts, completedIds]);
-
+function StatCard({ label, value, sub }) {
   return (
-    <div className="run-stats">
-      <div className="run-stats__title">{title || (mode === 'month' ? 'THIS MONTH' : 'THIS WEEK')}</div>
-
-      <div className="run-stats__grid">
-        <div className="run-stats__metric">
-          <div className="run-stats__metric-value">{stats.workouts}</div>
-          <div className="run-stats__metric-label">WORKOUTS</div>
-        </div>
-
-        <div className="run-stats__metric run-stats__metric--completed">
-          <div className="run-stats__metric-value">{stats.completedWorkouts}</div>
-          <div className="run-stats__metric-subvalue">{formatPct(stats.pct)}</div>
-          <div className="run-stats__metric-label">COMPLETED</div>
-
-          <div className="run-stats__completed-distance">
-            {formatDistance(stats.completedKm)}
-          </div>
-        </div>
-
-        <div className="run-stats__metric">
-          <div className="run-stats__metric-value">{formatDistance(stats.totalKm)}</div>
-          <div className="run-stats__metric-label">DISTANCE</div>
-        </div>
-
-        <div className="run-stats__metric">
-          <div className="run-stats__metric-value">{formatDuration(stats.totalMin)}</div>
-          <div className="run-stats__metric-label">DURATION</div>
-        </div>
-      </div>
+    <div className="rsp-stat">
+      <span className="rsp-stat__value">{value}</span>
+      {sub && <span className="rsp-stat__sub">{sub}</span>}
+      <span className="rsp-stat__label">{label}</span>
     </div>
   );
 }
 
-function sumKm(workouts) {
-  return workouts.reduce((acc, w) => acc + (Number(w.distance ?? 0) || 0), 0);
-}
+export default function RunStatsPanel({ plannedWorkouts, anchor, calView }) {
+  const weekDays  = getWeekDays(anchor);
+  const monthDays = getMonthDays(anchor);
 
-function sumMin(workouts) {
-  return workouts.reduce((acc, w) => acc + (Number(w.durationMinutes ?? 0) || 0), 0);
-}
+  const week  = calcStats(plannedWorkouts, weekDays);
+  const month = calcStats(plannedWorkouts, monthDays);
 
-function formatDistance(km) {
-  const k = Number(km ?? 0) || 0;
-  const mi = k * KM_TO_MI;
-  return `${k.toFixed(1)} km (${mi.toFixed(1)} mi)`;
-}
+  const fmtDist = (km) => km > 0
+    ? `${km.toFixed(1)} km (${(km * KM_TO_MI).toFixed(1)} mi)`
+    : '—';
+  const fmtDur  = (min) => min > 0
+    ? min >= 60
+      ? `${Math.floor(min / 60)}h ${min % 60}m`
+      : `${min}m`
+    : '—';
 
-function formatDuration(min) {
-  const m = Math.round(Number(min ?? 0) || 0);
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  if (h <= 0) return `${mm}m`;
-  return `${h}h ${mm}m`;
-}
+  return (
+    <div className="run-stats-panel">
 
-function formatPct(p) {
-  const n = Number.isFinite(p) ? p : 0;
-  return `${Math.round(n)}%`;
+      <div className="run-stats-panel__section">
+        <h3 className="run-stats-panel__heading">This Week</h3>
+        <div className="run-stats-panel__grid">
+          <StatCard label="Workouts" value={week.total} />
+          <StatCard label="Completed" value={week.completed} sub={week.total > 0 ? `${Math.round(week.completed / week.total * 100)}%` : null} />
+          <StatCard label="Distance"  value={fmtDist(week.distanceKm)} />
+          <StatCard label="Duration"  value={fmtDur(week.durationMin)} />
+        </div>
+      </div>
+
+      <div className="run-stats-panel__section">
+        <h3 className="run-stats-panel__heading">This Month</h3>
+        <div className="run-stats-panel__grid">
+          <StatCard label="Workouts" value={month.total} />
+          <StatCard label="Completed" value={month.completed} sub={month.total > 0 ? `${Math.round(month.completed / month.total * 100)}%` : null} />
+          <StatCard label="Distance"  value={fmtDist(month.distanceKm)} />
+          <StatCard label="Duration"  value={fmtDur(month.durationMin)} />
+        </div>
+      </div>
+
+    </div>
+  );
 }
