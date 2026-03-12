@@ -20,11 +20,22 @@ import CalendarToggle      from './components/CalendarToggle.jsx';
 import PlannedWorkoutModal from './components/PlannedWorkoutModal.jsx';
 import ConfirmDropModal    from './components/ConfirmDropModal.jsx';
 import AddWorkoutModal     from './components/AddWorkoutModal.jsx';
+import { checkHealth }     from './api/healthApi.js';
 import './App.css';
+
 
 export default function App() {
   const { races, plannedWorkouts, workoutLogs, loading, error, reload } =
     useAppData();
+
+  // ── Backend health ────────────────────────────────────
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'ok' | 'offline'
+
+  useEffect(() => {
+    checkHealth()
+      .then(() => setBackendStatus('ok'))
+      .catch(() => setBackendStatus('offline'));
+  }, []);
 
   // ── Active race ───────────────────────────────────────
   const [activeRaceId, setActiveRaceId] = useState(null);
@@ -158,6 +169,15 @@ export default function App() {
       <header className="app-header">
         <h1>Training Planner</h1>
         <p className="app-status">Step 12 — Add logs ✓</p>
+        {backendStatus === 'checking' && (
+          <span className="backend-status backend-status--checking">⏳ Checking backend…</span>
+        )}
+        {backendStatus === 'ok' && (
+          <span className="backend-status backend-status--ok">🟢 Backend ok</span>
+        )}
+        {backendStatus === 'offline' && (
+          <span className="backend-status backend-status--offline">🔴 Backend offline</span>
+        )}
       </header>
 
       <main className="app-main">
@@ -271,7 +291,6 @@ export default function App() {
         existingRaceName={getActiveRace(races)?.name ?? ''}
         onDecide={handleConflictDecision}
       />
-      {/* workoutLogs passed so modal can filter + sort its own attached logs */}
       <PlannedWorkoutModal
         workout={selectedWorkout}
         workoutLogs={workoutLogs}

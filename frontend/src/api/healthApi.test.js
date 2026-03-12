@@ -1,11 +1,11 @@
 import { checkHealth } from './healthApi';
 import { apiFetch } from './http';
 
-jest.mock('./http');
+vi.mock('./http');
 
 describe('checkHealth', () => {
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test('calls apiFetch with GET /health and returns status + version', async () => {
