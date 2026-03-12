@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppData }           from './hooks/useAppData.js';
 import { useAutoSave }          from './hooks/useAutoSave.js';
+import { seedSampleData }       from './db/seed.js';
 import { formatCount }          from './utils/formatters.js';
-import { getActiveRaceId, getActiveRace, makeRace } from './domain/raceHelpers.js';
+import { getActiveRaceId, getActiveRace, makeRace }  from './domain/raceHelpers.js';
 import { today, addDays, startOfMonth, addMonths, groupPlannedByDate } from './domain/calendarHelpers.js';
-import { shouldConfirmDrop } from './domain/workoutHelpers.js';
+import { shouldConfirmDrop }                          from './domain/workoutHelpers.js';
 import {
   createRaceEnforcingSingleActive,
   updatePlannedWorkout,
@@ -20,7 +21,6 @@ import CalendarToggle      from './components/CalendarToggle.jsx';
 import PlannedWorkoutModal from './components/PlannedWorkoutModal.jsx';
 import ConfirmDropModal    from './components/ConfirmDropModal.jsx';
 import AddWorkoutModal     from './components/AddWorkoutModal.jsx';
-import RunStatsPanel       from './components/RunStatsPanel.jsx';
 import Toast               from './components/Toast.jsx';
 import CsvImportPanel      from './components/CsvImportPanel.jsx';
 import { checkHealth }     from './api/healthApi.js';
@@ -31,13 +31,17 @@ import { downloadTextFile } from './utils/downloadFile.js';
 import db                  from './db/db.js';
 import './App.css';
 
-export default function App() {
-  const { races, plannedWorkouts, workoutLogs, loading, error, reload } = useAppData();
 
+export default function App() {
+  const { races, plannedWorkouts, workoutLogs, loading, error, reload } =
+    useAppData();
+
+  // ── Auto-save ─────────────────────────────────────────
   useAutoSave({ races, plannedWorkouts, workoutLogs });
 
   // ── Backend health ────────────────────────────────────
   const [backendStatus, setBackendStatus] = useState('checking');
+
   useEffect(() => {
     checkHealth()
       .then(() => setBackendStatus('ok'))
@@ -46,15 +50,19 @@ export default function App() {
 
   // ── Active race ───────────────────────────────────────
   const [activeRaceId, setActiveRaceId] = useState(null);
-  const initializedRef = useRef(false);
+  const initializedRef = useRef(false);  // ← track whether we've done first load
 
   useEffect(() => {
+    // Only auto-select the active race on the very first load.
+    // After that, preserve whatever the user has manually selected.
     if (!loading && !initializedRef.current) {
       initializedRef.current = true;
       setActiveRaceId(getActiveRaceId(races));
     }
   }, [loading, races]);
 
+  // If the currently selected race is deleted or no longer exists,
+  // fall back to the default active race gracefully.
   useEffect(() => {
     if (!loading && activeRaceId !== null) {
       const still = races.find((r) => r.id === activeRaceId);
@@ -80,9 +88,13 @@ export default function App() {
   const handlePrevMonth = () => setAnchor((a) => addMonths(startOfMonth(a), -1));
   const handleNextMonth = () => setAnchor((a) => addMonths(startOfMonth(a), 1));
 
-  // ── Workout selection + save ──────────────────────────
+  // ── Planned workout selection + edit save ─────────────
   const [selectedWorkoutId, setSelectedWorkoutId] = useState(null);
-  const selectedWorkout = plannedWorkouts.find((pw) => pw.id === selectedWorkoutId) ?? null;
+
+  // Look up the workout across ALL plannedWorkouts (not just active race)
+  // so the modal can still open even if the user's view has changed.
+  const selectedWorkout =
+    plannedWorkouts.find((pw) => pw.id === selectedWorkoutId) ?? null;
 
   function handleSelectWorkout(workout) { setSelectedWorkoutId(workout.id); }
   function handleCloseWorkoutModal()    { setSelectedWorkoutId(null); }
@@ -95,12 +107,6 @@ export default function App() {
     await reload();
   }
 
-  async function handleToggleComplete(workout) {
-    await updatePlannedWorkout(workout, { completed: !workout.completed });
-    clearSnapshot();
-    await reload();
-  }
-
   // ── Drag/drop ─────────────────────────────────────────
   const [pendingDrop, setPendingDrop] = useState(null);
   const byDate = groupPlannedByDate(activePlannedWorkouts);
@@ -109,6 +115,7 @@ export default function App() {
     const workout = activePlannedWorkouts.find((pw) => pw.id === workoutId);
     if (!workout) return;
     if (workout.date === targetDate) return;
+
     const existing = (byDate[targetDate] ?? []).filter((pw) => pw.id !== workoutId);
     if (shouldConfirmDrop(existing.length)) {
       setPendingDrop({ workoutId, targetDate });
@@ -187,7 +194,11 @@ export default function App() {
       });
       await db.plannedWorkouts.bulkPut(updated);
       await reload();
-      setToast({ message: 'Plan recalculated', actionLabel: 'Undo', onAction: handleUndoRecalculate });
+      setToast({
+        message: 'Plan recalculated',
+        actionLabel: 'Undo',
+        onAction: handleUndoRecalculate,
+      });
     } catch (err) {
       setToast({ message: `Recalculate failed: ${err.message}` });
     } finally {
@@ -210,7 +221,10 @@ export default function App() {
     if (!activeRace) return;
     setExporting(true);
     try {
-      const result = await exportCsv({ plannedWorkouts: activePlannedWorkouts, workoutLogs });
+      const result = await exportCsv({
+        plannedWorkouts: activePlannedWorkouts,
+        workoutLogs,
+      });
       downloadTextFile('planned_workouts.csv', result.plannedWorkoutsCsv);
       downloadTextFile('workout_logs.csv',     result.workoutLogsCsv);
     } catch (err) {
@@ -223,21 +237,38 @@ export default function App() {
   // ── Import/Export panel toggle ────────────────────────
   const [importExportOpen, setImportExportOpen] = useState(false);
 
+  // ── Seed ──────────────────────────────────────────────
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState('');
+
+  async function handleSeed() {
+    setSeeding(true); setSeedMsg('');
+    try { await seedSampleData(); await reload(); setSeedMsg('Sample data seeded ✓'); }
+    catch (err) { setSeedMsg(`Seed failed: ${err.message}`); }
+    finally { setSeeding(false); }
+  }
+
   // ── Confirm drop info ─────────────────────────────────
   const confirmDropCount = pendingDrop
-    ? (byDate[pendingDrop.targetDate] ?? []).filter((pw) => pw.id !== pendingDrop.workoutId).length
+    ? (byDate[pendingDrop.targetDate] ?? [])
+        .filter((pw) => pw.id !== pendingDrop.workoutId).length
     : 0;
 
   // ── Render ────────────────────────────────────────────
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-header__title-row">
-          <h1>Training Planner</h1>
-          {backendStatus === 'offline' && (
-            <span className="backend-status backend-status--offline" title="Backend offline — route snapping unavailable">⚠ Backend offline</span>
-          )}
-        </div>
+        <h1>Training Planner</h1>
+        <p className="app-status">Step 12 — Add logs ✓</p>
+        {backendStatus === 'checking' && (
+          <span className="backend-status backend-status--checking">⏳ Checking backend…</span>
+        )}
+        {backendStatus === 'ok' && (
+          <span className="backend-status backend-status--ok">🟢 Backend ok</span>
+        )}
+        {backendStatus === 'offline' && (
+          <span className="backend-status backend-status--offline">🔴 Backend offline</span>
+        )}
       </header>
 
       <main className="app-main">
@@ -264,15 +295,15 @@ export default function App() {
                   <>
                     <button
                       type="button"
-                      className="cal-action-btn cal-action-btn--secondary"
+                      className="btn-recalculate"
                       onClick={handleRecalculate}
                       disabled={recalculating}
                     >
-                      {recalculating ? 'Recalculating…' : '🔁 Recalculate'}
+                      {recalculating ? 'Recalculating…' : '🔁 Recalculate Plan'}
                     </button>
                     <button
                       type="button"
-                      className="cal-action-btn cal-action-btn--primary"
+                      className="btn-add-workout"
                       onClick={() => setAddWorkoutOpen(true)}
                     >
                       ＋ Add Workout
@@ -294,7 +325,6 @@ export default function App() {
                 onNextWeek={handleNextWeek}
                 onSelectWorkout={handleSelectWorkout}
                 onDropWorkout={handleDropWorkout}
-                onToggleComplete={handleToggleComplete}
               />
             ) : (
               <MonthCalendar
@@ -307,29 +337,53 @@ export default function App() {
                 onNextMonth={handleNextMonth}
                 onSelectWorkout={handleSelectWorkout}
                 onDropWorkout={handleDropWorkout}
-                onToggleComplete={handleToggleComplete}
               />
             )}
           </section>
         )}
 
-        {/* ── Run Stats ── */}
-        {!loading && activePlannedWorkouts.length > 0 && (
-          <section className="stats-section">
-            <RunStatsPanel
-              plannedWorkouts={activePlannedWorkouts}
-              anchor={anchor}
-              calView={calView}
-            />
+        <section className="counts-section">
+          <h2>IndexedDB counts</h2>
+          {loading ? (
+            <p className="loading">Loading…</p>
+          ) : error ? (
+            <p className="error">Error: {error}</p>
+          ) : (
+            <ul className="counts-list">
+              <li><span className="count-number">{races.length}</span>{formatCount(races.length, 'race')}</li>
+              <li><span className="count-number">{plannedWorkouts.length}</span>{formatCount(plannedWorkouts.length, 'planned workout')}</li>
+              <li><span className="count-number">{workoutLogs.length}</span>{formatCount(workoutLogs.length, 'workout log')}</li>
+            </ul>
+          )}
+        </section>
+
+        {!loading && races.length > 0 && (
+          <section className="all-races-section">
+            <h2>All races ({races.length})</h2>
+            <ul className="race-list">
+              {races.map((r) => (
+                <li key={r.id} className={`race-row race-row--${r.status}`}>
+                  <span className="race-row__name">{r.name}</span>
+                  <span className="race-row__dates">{r.startDate} → {r.endDate}</span>
+                  <span className={`race-row__status race-row__status--${r.status}`}>{r.status}</span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
-        {/* ── Import / Export ── */}
-        {!loading && activeRace && (
-          <section className="import-export-section">
+        <section className="seed-section">
+          <h2>Dev tools</h2>
+          <button className="btn-seed" onClick={handleSeed} disabled={seeding || creating}>
+            {seeding ? 'Seeding…' : '🌱 Seed sample data'}
+          </button>
+          {seedMsg && <p className={seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'}>{seedMsg}</p>}
+          <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 3 attached logs + 1 unplanned log.</p>
+
+          <div className="import-export-section">
             <button
               type="button"
-              className="cal-action-btn cal-action-btn--ghost import-export-toggle"
+              className="btn-toggle-import-export"
               onClick={() => setImportExportOpen((v) => !v)}
             >
               {importExportOpen ? '▲ Hide Import / Export' : '▼ Import / Export'}
@@ -339,17 +393,17 @@ export default function App() {
               <div className="import-export-panel">
                 <button
                   type="button"
-                  className="cal-action-btn cal-action-btn--secondary"
+                  className="btn-export"
                   onClick={handleExportCsv}
-                  disabled={exporting}
+                  disabled={exporting || !activeRace}
                 >
                   {exporting ? 'Exporting…' : '⬇ Export CSV'}
                 </button>
                 <CsvImportPanel onImportComplete={reload} />
               </div>
             )}
-          </section>
-        )}
+          </div>
+        </section>
       </main>
 
       {toast && (
@@ -361,8 +415,16 @@ export default function App() {
         />
       )}
 
-      <RaceModal isOpen={raceModalOpen} onClose={() => setRaceModalOpen(false)} onSave={handleRaceModalSave} />
-      <ConflictModal isOpen={conflictModalOpen} existingRaceName={getActiveRace(races)?.name ?? ''} onDecide={handleConflictDecision} />
+      <RaceModal
+        isOpen={raceModalOpen}
+        onClose={() => setRaceModalOpen(false)}
+        onSave={handleRaceModalSave}
+      />
+      <ConflictModal
+        isOpen={conflictModalOpen}
+        existingRaceName={getActiveRace(races)?.name ?? ''}
+        onDecide={handleConflictDecision}
+      />
       <PlannedWorkoutModal
         workout={selectedWorkout}
         workoutLogs={workoutLogs}
@@ -387,12 +449,3 @@ export default function App() {
     </div>
   );
 }
-
-
-// ...inside your App component render (near the bottom where your "summary at the bottom" should be):
-//
-// import RunSummary from './components/RunSummary.jsx';
-//
-// Then render it beneath the calendar (or wherever your summary lives):
-//
-// <RunSummary plannedWorkouts={activePlannedWorkouts} />

@@ -1,6 +1,6 @@
 /* ── Layout ──────────────────────────────────────────────── */
 .app {
-  max-width: 900px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem 3rem;
   font-family: system-ui, sans-serif;
@@ -12,13 +12,8 @@
   margin-bottom: 1.5rem;
 }
 
-.app-header__title-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.app-header h1 { margin: 0; font-size: 1.75rem; color: #1a202c; }
+.app-header h1 { margin: 0 0 0.2rem 0; font-size: 1.75rem; color: #1a202c; }
+.app-status    { margin: 0; font-size: 0.85rem; color: #38a169; }
 
 .app-main section { margin-bottom: 2rem; }
 
@@ -33,16 +28,6 @@
 
 .section-hint { font-weight: 400; color: #a0aec0; text-transform: none; letter-spacing: 0; }
 
-/* ── Backend offline indicator ────────────────────────────── */
-.backend-status--offline {
-  font-size: 0.78rem;
-  color: #c53030;
-  background: #fff5f5;
-  border: 1px solid #fed7d7;
-  border-radius: 5px;
-  padding: 0.2rem 0.55rem;
-}
-
 /* ── Calendar section ─────────────────────────────────────── */
 .calendar-section__header {
   display: flex;
@@ -50,82 +35,99 @@
   justify-content: space-between;
   margin-bottom: 0.6rem;
 }
+
+/* Remove the default bottom margin from h2 inside header row */
 .calendar-section__header h2 { margin-bottom: 0; }
 
-.calendar-section__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+/* ── Counts ──────────────────────────────────────────────── */
+.counts-list {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; gap: 1rem; flex-wrap: wrap;
 }
 
-/* ── Unified calendar action buttons ─────────────────────── */
-.cal-action-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.32rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.13s, border-color 0.13s, color 0.13s;
-  line-height: 1.4;
-}
-.cal-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-/* Ghost (outline) */
-.cal-action-btn--ghost {
-  background: #fff;
-  border: 1px solid #cbd5e0;
-  color: #4a5568;
-}
-.cal-action-btn--ghost:hover:not(:disabled) { background: #f7fafc; border-color: #a0aec0; }
-
-/* Secondary (subtle filled) */
-.cal-action-btn--secondary {
-  background: #edf2f7;
-  border: 1px solid #e2e8f0;
-  color: #2d3748;
-}
-.cal-action-btn--secondary:hover:not(:disabled) { background: #e2e8f0; }
-
-/* Primary (green) */
-.cal-action-btn--primary {
-  background: #38a169;
-  border: 1px solid transparent;
-  color: #fff;
-}
-.cal-action-btn--primary:hover:not(:disabled) { background: #2f855a; }
-
-/* ── Import / Export section ──────────────────────────────── */
-.import-export-toggle { margin-bottom: 0.5rem; }
-
-.import-export-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  background: #f7fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+.counts-list li {
+  background: #edf2f7; border-radius: 8px; padding: 0.6rem 1rem;
+  font-size: 0.88rem; color: #4a5568;
+  display: flex; flex-direction: column; align-items: center; min-width: 100px;
 }
 
-/* ── Stats section ────────────────────────────────────────── */
-.stats-section { margin-top: -0.5rem; }
+.count-number { font-size: 1.5rem; font-weight: 700; color: #2b6cb0; line-height: 1; margin-bottom: 0.25rem; }
+
+/* ── Workout cards (debug list) ──────────────────────────── */
+.race-name  { color: #2b6cb0; font-weight: 600; }
+
+.workout-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+
+.workout-card {
+  display: flex; align-items: center; gap: 0.7rem;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 0.45rem 0.75rem; font-size: 0.88rem; color: #2d3748;
+}
+
+.workout-date        { font-variant-numeric: tabular-nums; color: #718096; font-size: 0.8rem; min-width: 5.5rem; }
+.workout-type-badge  { padding: 0.18rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: #e2e8f0; color: #4a5568; }
+.workout-type-badge.quality { background: #fefcbf; color: #744210; }
+.workout-title       { color: #4a5568; flex: 1; font-size: 0.88rem; }
+.workout-locked      { font-size: 0.8rem; margin-left: auto; }
+
+/* ── All races debug list ────────────────────────────────── */
+.race-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+
+.race-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.45rem 0.75rem; border-radius: 7px; border: 1px solid #e2e8f0;
+  background: #fff; font-size: 0.88rem;
+}
+
+.race-row--active    { border-color: #bee3f8; background: #ebf8ff; }
+.race-row--archived  { opacity: 0.65; }
+.race-row--completed { opacity: 0.65; }
+
+.race-row__name  { font-weight: 600; color: #1a202c; }
+.race-row__dates { font-size: 0.8rem; color: #718096; flex: 1; }
+
+.race-row__status {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  padding: 0.15rem 0.45rem; border-radius: 999px; letter-spacing: 0.05em;
+}
+
+.race-row__status--active    { background: #c6f6d5; color: #276749; }
+.race-row__status--archived  { background: #e2e8f0; color: #4a5568; }
+.race-row__status--completed { background: #fefcbf; color: #744210; }
+
+/* ── Dev tools ───────────────────────────────────────────── */
+.btn-seed { padding: 0.5rem 1rem; font-size: 0.9rem; background: #2b6cb0; color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
+.btn-seed:hover:not(:disabled) { background: #2c5282; }
+.btn-seed:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.seed-ok { margin-top: 0.5rem; color: #38a169; font-size: 0.88rem; }
+.hint    { font-size: 0.82rem; color: #718096; margin-top: 0.4rem; }
 
 /* ── Shared states ───────────────────────────────────────── */
 .loading { color: #718096; font-style: italic; }
 .error   { color: #e53e3e; font-size: 0.88rem; }
 
-/* ── Race list ───────────────────────────────────────────── */
-.race-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
-.race-row  { display: flex; align-items: center; gap: 0.75rem; padding: 0.45rem 0.75rem; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff; font-size: 0.88rem; }
-.race-row--active    { border-color: #bee3f8; background: #ebf8ff; }
-.race-row--archived  { opacity: 0.65; }
-.race-row--completed { opacity: 0.65; }
-.race-row__name  { font-weight: 600; color: #1a202c; }
-.race-row__dates { font-size: 0.8rem; color: #718096; flex: 1; }
-.race-row__status { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 999px; letter-spacing: 0.05em; }
-.race-row__status--active    { background: #c6f6d5; color: #276749; }
-.race-row__status--archived  { background: #e2e8f0; color: #4a5568; }
-.race-row__status--completed { background: #fefcbf; color: #744210; }
+/* ── Calendar section actions (toggle + add button) ──────── */
+.calendar-section__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Add Workout button ───────────────────────────────────── */
+.btn-add-workout {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #38a169;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-add-workout:hover {
+  background: #2f855a;
+}
