@@ -1,5 +1,5 @@
 /**
- * PlannedWorkoutModal  (Step 11: real logs section)
+ * PlannedWorkoutModal  (Step 11: real logs section + Step 7.3: route snap)
  *
  * Props:
  *   workout      {PlannedWorkout | null}
@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { displayWorkoutType, isQualityType, ALL_WORKOUT_TYPES } from '../domain/workoutTypes.js';
 import { normaliseWorkoutForm } from '../domain/workoutHelpers.js';
 import { getLogsForPlanned, logSummary, formatLogTime } from '../domain/logHelpers.js';
+import RouteSnapPanel from './RouteSnapPanel.jsx';
 import './PlannedWorkoutModal.css';
 
 export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen, onClose, onSave }) {
@@ -40,11 +41,9 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
 
   if (!isOpen || !workout || !form) return null;
 
-  // Derive sorted logs for this planned workout
   const attachedLogs = getLogsForPlanned(workoutLogs, workout.id);
-
-  const quality   = isQualityType(form.type);
-  const typeLabel = displayWorkoutType(form.type);
+  const quality      = isQualityType(form.type);
+  const typeLabel    = displayWorkoutType(form.type);
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -67,6 +66,14 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleSnap(result) {
+    setForm((prev) => ({
+      ...prev,
+      distance: result.distanceKm != null ? String(result.distanceKm.toFixed(2)) : prev.distance,
+    }));
+    setDirty(true);
   }
 
   return (
@@ -145,7 +152,7 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
 
             {/* Row 3: distance + duration */}
             <div className="pw-form-row pw-form-row--2col">
-              <FormField label="Distance (mi)">
+              <FormField label="Distance (km)">
                 <input
                   type="number"
                   name="distance"
@@ -153,8 +160,8 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
                   value={form.distance}
                   onChange={handleChange}
                   min="0"
-                  step="0.1"
-                  placeholder="e.g. 5"
+                  step="0.01"
+                  placeholder="e.g. 8.05"
                 />
               </FormField>
 
@@ -174,25 +181,25 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
 
             {/* Row 4: pace low + pace high */}
             <div className="pw-form-row pw-form-row--2col">
-              <FormField label="Pace low (min/mi)">
+              <FormField label="Pace low (min/km)">
                 <input
                   type="text"
                   name="paceLow"
                   className="form-input"
                   value={form.paceLow}
                   onChange={handleChange}
-                  placeholder="e.g. 8:30"
+                  placeholder="e.g. 5:00"
                 />
               </FormField>
 
-              <FormField label="Pace high (min/mi)">
+              <FormField label="Pace high (min/km)">
                 <input
                   type="text"
                   name="paceHigh"
                   className="form-input"
                   value={form.paceHigh}
                   onChange={handleChange}
-                  placeholder="e.g. 9:00"
+                  placeholder="e.g. 5:30"
                 />
               </FormField>
             </div>
@@ -205,7 +212,7 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
                 value={form.structureText}
                 onChange={handleChange}
                 rows={3}
-                placeholder="e.g. 2×10 min tempo @ 7:30/mi, 3 min recovery"
+                placeholder="e.g. 2×10 min tempo @ 4:30/km, 3 min recovery"
               />
             </FormField>
 
@@ -238,6 +245,12 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
               </label>
             </div>
 
+            {/* ── Route Snap — always visible ──────── */}
+            <div className="pw-modal-section pw-route-section">
+              <h3 className="pw-modal-section-title">Snap Route</h3>
+              <RouteSnapPanel onSnap={handleSnap} />
+            </div>
+
             {/* ── Logs section ─────────────────────── */}
             <div className="pw-modal-section pw-logs-section">
               <h3 className="pw-modal-section-title">
@@ -246,7 +259,6 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
                   <span className="pw-logs-count">{attachedLogs.length}</span>
                 )}
               </h3>
-
               {attachedLogs.length === 0 ? (
                 <p className="pw-modal-empty-hint">No logs yet for this workout.</p>
               ) : (
@@ -277,11 +289,9 @@ export default function PlannedWorkoutModal({ workout, workoutLogs = [], isOpen,
   );
 }
 
-// ── LogEntry sub-component ────────────────────────────────
-
 function LogEntry({ log }) {
-  const summary  = logSummary(log);
-  const timeStr  = formatLogTime(log.time);
+  const summary   = logSummary(log);
+  const timeStr   = formatLogTime(log.time);
   const typeLabel = log.type
     ? log.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : '';
@@ -298,8 +308,6 @@ function LogEntry({ log }) {
     </li>
   );
 }
-
-// ── helpers ───────────────────────────────────────────────
 
 function workoutToForm(w) {
   return {
