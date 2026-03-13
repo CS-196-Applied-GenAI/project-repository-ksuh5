@@ -341,7 +341,7 @@ export default function App() {
             )}
           </section>
         )}
-
+{/* 
         <section className="counts-section">
           <h2>IndexedDB counts</h2>
           {loading ? (
@@ -355,7 +355,7 @@ export default function App() {
               <li><span className="count-number">{workoutLogs.length}</span>{formatCount(workoutLogs.length, 'workout log')}</li>
             </ul>
           )}
-        </section>
+        </section> */}
 
         {!loading && races.length > 0 && (
           <section className="all-races-section">
@@ -372,7 +372,7 @@ export default function App() {
           </section>
         )}
 
-        <section className="seed-section">
+        {/* <section className="seed-section">
           <h2>Dev tools</h2>
           <button className="btn-seed" onClick={handleSeed} disabled={seeding || creating}>
             {seeding ? 'Seeding…' : '🌱 Seed sample data'}
@@ -403,7 +403,7 @@ export default function App() {
               </div>
             )}
           </div>
-        </section>
+        </section> */}
       </main>
 
       {toast && (
