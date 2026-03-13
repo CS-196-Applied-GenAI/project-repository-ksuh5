@@ -131,3 +131,34 @@
 .btn-add-workout:hover {
   background: #2f855a;
 }
+
+/* Make Recalculate button match Add Workout size */
+.btn-recalculate {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  border-radius: 7px;
+}
+
+/* ── Grey Button ─────────────────────────────────────────── */
+.btn-grey {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #e2e8f0;   /* light grey */
+  color: #2d3748;        /* dark text */
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-grey:hover:not(:disabled) {
+  background: #cbd5e0;   /* darker grey on hover */
+}
+
+.btn-grey:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

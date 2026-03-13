@@ -4,7 +4,13 @@ import { useAutoSave }          from './hooks/useAutoSave.js';
 import { seedSampleData }       from './db/seed.js';
 import { formatCount }          from './utils/formatters.js';
 import { getActiveRaceId, getActiveRace, makeRace }  from './domain/raceHelpers.js';
-import { today, addDays, startOfMonth, addMonths, groupPlannedByDate } from './domain/calendarHelpers.js';
+import {
+  today,
+  addDays,
+  startOfMonth,
+  addMonths,
+  groupPlannedByDate,
+} from './domain/calendarHelpers.js';
 import { shouldConfirmDrop }                          from './domain/workoutHelpers.js';
 import {
   createRaceEnforcingSingleActive,
@@ -23,6 +29,7 @@ import ConfirmDropModal    from './components/ConfirmDropModal.jsx';
 import AddWorkoutModal     from './components/AddWorkoutModal.jsx';
 import Toast               from './components/Toast.jsx';
 import CsvImportPanel      from './components/CsvImportPanel.jsx';
+import RunStatsPanel       from './components/RunStatsPanel.jsx';
 import { checkHealth }     from './api/healthApi.js';
 import { recalculatePlan } from './api/recalcApi.js';
 import { exportCsv }       from './api/csvApi.js';
@@ -30,7 +37,6 @@ import { setSnapshot, getSnapshot, clearSnapshot } from './state/undoStore.js';
 import { downloadTextFile } from './utils/downloadFile.js';
 import db                  from './db/db.js';
 import './App.css';
-
 
 export default function App() {
   const { races, plannedWorkouts, workoutLogs, loading, error, reload } =
@@ -259,7 +265,6 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        {/* <p className="app-status">Step 12 — Add logs ✓</p> */}
         {backendStatus === 'checking' && (
           <span className="backend-status backend-status--checking">⏳ Checking backend…</span>
         )}
@@ -295,7 +300,7 @@ export default function App() {
                   <>
                     <button
                       type="button"
-                      className="btn-recalculate"
+                      className="btn btn-primary btn-add-workout"
                       onClick={handleRecalculate}
                       disabled={recalculating}
                     >
@@ -339,23 +344,47 @@ export default function App() {
                 onDropWorkout={handleDropWorkout}
               />
             )}
+            {/* ── Run Stats ── */}
+            {!loading && activePlannedWorkouts.length > 0 && (
+              <section className="stats-section">
+                <RunStatsPanel
+                  plannedWorkouts={activePlannedWorkouts}
+                  anchor={anchor}
+                  calView={calView}
+                />
+              </section>
+            )}
+
+             {/* ── Import / Export ── */}
+        {!loading && activeRace && (
+          <section className="import-export-section">
+            <button
+              type="button"
+              className="cal-action-btn cal-action-btn--ghost import-export-toggle btn btn-primary btn-add-workout"
+              onClick={() => setImportExportOpen((v) => !v)}
+            >
+              {importExportOpen ? '▲ Hide Import / Export' : '▼ Import / Export'}
+            </button>
+
+            {importExportOpen && (
+              <div className="import-export-panel">
+                <button
+                  type="button"
+                  className="cal-action-btn cal-action-btn--secondary btn-grey"
+                  onClick={handleExportCsv}
+                  disabled={exporting}
+                >
+                  {exporting ? 'Exporting…' : '⬇ Export CSV'}
+                </button>
+                <CsvImportPanel onImportComplete={reload} />
+              </div>
+            )}
           </section>
         )}
-{/* 
-        <section className="counts-section">
-          <h2>IndexedDB counts</h2>
-          {loading ? (
-            <p className="loading">Loading…</p>
-          ) : error ? (
-            <p className="error">Error: {error}</p>
-          ) : (
-            <ul className="counts-list">
-              <li><span className="count-number">{races.length}</span>{formatCount(races.length, 'race')}</li>
-              <li><span className="count-number">{plannedWorkouts.length}</span>{formatCount(plannedWorkouts.length, 'planned workout')}</li>
-              <li><span className="count-number">{workoutLogs.length}</span>{formatCount(workoutLogs.length, 'workout log')}</li>
-            </ul>
-          )}
-        </section> */}
+
+            
+          </section>
+        )}
 
         {!loading && races.length > 0 && (
           <section className="all-races-section">
@@ -371,39 +400,6 @@ export default function App() {
             </ul>
           </section>
         )}
-
-        {/* <section className="seed-section">
-          <h2>Dev tools</h2>
-          <button className="btn-seed" onClick={handleSeed} disabled={seeding || creating}>
-            {seeding ? 'Seeding…' : '🌱 Seed sample data'}
-          </button>
-          {seedMsg && <p className={seedMsg.startsWith('Seed failed') ? 'error' : 'seed-ok'}>{seedMsg}</p>}
-          <p className="hint">Seeds: 1 active race + 1 archived + 1 planned workout + 3 attached logs + 1 unplanned log.</p>
-
-          <div className="import-export-section">
-            <button
-              type="button"
-              className="btn-toggle-import-export"
-              onClick={() => setImportExportOpen((v) => !v)}
-            >
-              {importExportOpen ? '▲ Hide Import / Export' : '▼ Import / Export'}
-            </button>
-
-            {importExportOpen && (
-              <div className="import-export-panel">
-                <button
-                  type="button"
-                  className="btn-export"
-                  onClick={handleExportCsv}
-                  disabled={exporting || !activeRace}
-                >
-                  {exporting ? 'Exporting…' : '⬇ Export CSV'}
-                </button>
-                <CsvImportPanel onImportComplete={reload} />
-              </div>
-            )}
-          </div>
-        </section> */}
       </main>
 
       {toast && (

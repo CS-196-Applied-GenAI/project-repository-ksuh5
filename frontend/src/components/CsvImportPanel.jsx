@@ -127,7 +127,7 @@ export default function CsvImportPanel({ onImportComplete }) {
 
         <button
           type="submit"
-          className="btn-import"
+          className="btn-import btn-grey"
           disabled={importing || (!plannedFile && !logsFile)}
         >
           {importing ? 'Importing…' : '⬆ Import CSV'}
