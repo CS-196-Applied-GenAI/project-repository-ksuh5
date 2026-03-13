@@ -1,6 +1,7 @@
 /* ── Add Workout Modal ───────────────────────────────────── */
 .add-workout-box {
-  width: min(480px, 95vw);
+  width: 95vw;
+  max-width: 720px;   /* controls actual modal width */
 }
 
 .add-workout-form {
@@ -103,4 +104,36 @@
   border: 1px solid #bbf7d0;
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
+}
+
+/* ── Scrollable modal behavior ───────────────────────────── */
+
+/* limit modal height and enable flex layout */
+.add-workout-box {
+  width: min(6400px, 95vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* make the form content scroll */
+.add-workout-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem 1.25rem;
+
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.3rem; /* prevents scrollbar overlap */
+}
+
+/* keep action buttons visible */
+.add-workout-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding-top: 0.25rem;
+
+  flex-shrink: 0;
 }

@@ -8,8 +8,31 @@
  *   draggable  {boolean}   default false
  *   dragMime   {string}    MIME type for dataTransfer
  */
+import { useEffect, useMemo, useState } from 'react';
 import { displayWorkoutType, isQualityType } from '../domain/workoutTypes.js';
 import './PlannedWorkoutCard.css';
+
+const LS_KEY = 'pw:completedIds:v1';
+
+function readCompletedSet() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return new Set();
+    return new Set(arr.filter((x) => typeof x === 'string'));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeCompletedSet(set) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(Array.from(set)));
+  } catch {
+    // ignore
+  }
+}
 
 export default function PlannedWorkoutCard({
   workout,
@@ -21,6 +44,31 @@ export default function PlannedWorkoutCard({
   const quality = isQualityType(workout.type);
   const label   = displayWorkoutType(workout.type);
   const meta    = buildMeta(workout);
+
+  const [completedIds, setCompletedIds] = useState(() => readCompletedSet());
+
+  // keep in sync across tabs/windows
+  useEffect(() => {
+    function onStorage(e) {
+      if (e.key === LS_KEY) setCompletedIds(readCompletedSet());
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const isCompleted = useMemo(() => completedIds.has(workout.id), [completedIds, workout.id]);
+
+  function toggleCompleted(e) {
+    // e.preventDefault();
+    e.stopPropagation();
+    setCompletedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(workout.id)) next.delete(workout.id);
+      else next.add(workout.id);
+      writeCompletedSet(next);
+      return next;
+    });
+  }
 
   // ── Drag handlers ─────────────────────────────────────
 
@@ -36,31 +84,47 @@ export default function PlannedWorkoutCard({
   }
 
   return (
-    <button
-      type="button"
+    <div
       className={[
-        'pw-card',
-        quality        ? 'pw-card--quality' : '',
-        compact        ? 'pw-card--compact'  : '',
-        workout.locked ? 'pw-card--locked'   : '',
+        'pw-card-row',
+        isCompleted ? 'pw-card-row--completed' : '',
       ].filter(Boolean).join(' ')}
-      onClick={() => onClick(workout)}
-      title={workout.title || label}
-      aria-label={`${label}${meta ? ', ' + meta : ''}${workout.locked ? ', locked' : ''}`}
-      draggable={draggable}
-      onDragStart={draggable ? handleDragStart : undefined}
-      onDragEnd={draggable   ? handleDragEnd   : undefined}
     >
-      <span className="pw-card__type">{label}</span>
+      <input
+        type="checkbox"
+        className="pw-card-row__checkbox"
+        checked={isCompleted}
+        onChange={toggleCompleted}
+        aria-label={`Mark ${label} as completed`}
+      />
 
-      {!compact && meta && (
-        <span className="pw-card__meta">{meta}</span>
-      )}
+      <button
+        type="button"
+        className={[
+          'pw-card',
+          quality        ? 'pw-card--quality' : '',
+          compact        ? 'pw-card--compact'  : '',
+          workout.locked ? 'pw-card--locked'   : '',
+          isCompleted    ? 'pw-card--completed' : '',
+        ].filter(Boolean).join(' ')}
+        onClick={() => onClick(workout)}
+        title={workout.title || label}
+        aria-label={`${label}${meta ? ', ' + meta : ''}${workout.locked ? ', locked' : ''}`}
+        draggable={draggable}
+        onDragStart={draggable ? handleDragStart : undefined}
+        onDragEnd={draggable   ? handleDragEnd   : undefined}
+      >
+        <span className="pw-card__type">{label}</span>
 
-      {workout.locked && (
-        <span className="pw-card__lock" aria-hidden="true">🔒</span>
-      )}
-    </button>
+        {!compact && meta && (
+          <span className="pw-card__meta">{meta}</span>
+        )}
+
+        {workout.locked && (
+          <span className="pw-card__lock" aria-hidden="true">🔒</span>
+        )}
+      </button>
+    </div>
   );
 }
 

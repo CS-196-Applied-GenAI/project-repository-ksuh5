@@ -45,6 +45,26 @@
 .pw-card--locked          { border-left: 2px solid #a0aec0; }
 .pw-card--compact         { font-size: 0.65rem; padding: 0.15rem 0.3rem; border-radius: 4px; }
 
+/* Completed */
+.pw-card--completed {
+  opacity: 0.55;            /* dim slightly */
+  filter: saturate(0.9);
+}
+
+/* ── Row wrapper with checkbox ───────────────────────────── */
+.pw-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pw-card-row__checkbox {
+  width: 0.95rem;
+  height: 0.95rem;
+  accent-color: #22c55e;
+  flex-shrink: 0;
+}
+
 /* ── Inner elements ──────────────────────────────────────── */
 .pw-card__type  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pw-card__meta  { font-size: 0.65rem; font-weight: 400; color: #718096; white-space: nowrap; flex-shrink: 0; }

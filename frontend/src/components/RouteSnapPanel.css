@@ -97,7 +97,7 @@
 }
 .rsp__btn--primary:hover:not(:disabled) { background: #15803d; }
 
-/* ── Map ── */
+/* ── Map spacing inside scrollable modals ── */
 .rsp__map-wrap {
   border-radius: 8px;
   overflow: hidden;
@@ -106,6 +106,8 @@
   flex-shrink: 0;
   flex: 1 1 auto;
   min-height: 280px;
+
+  margin-right: 0.35rem; /* prevents scrollbar overlap */
 }
 .rsp--fullscreen .rsp__map-wrap {
   height: 0;
