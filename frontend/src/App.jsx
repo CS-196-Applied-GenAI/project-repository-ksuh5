@@ -259,12 +259,12 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Training Planner</h1>
-        <p className="app-status">Step 12 — Add logs ✓</p>
+        {/* <p className="app-status">Step 12 — Add logs ✓</p> */}
         {backendStatus === 'checking' && (
           <span className="backend-status backend-status--checking">⏳ Checking backend…</span>
         )}
         {backendStatus === 'ok' && (
-          <span className="backend-status backend-status--ok">🟢 Backend ok</span>
+          <span className="backend-status backend-status--ok">🟢 Backend online</span>
         )}
         {backendStatus === 'offline' && (
           <span className="backend-status backend-status--offline">🔴 Backend offline</span>
