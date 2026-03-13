@@ -27,13 +27,16 @@ function readCompletedSet() {
 }
 
 function writeCompletedSet(set) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(Array.from(set)));
-  } catch {
-    // ignore
-  }
-}
+  const arr = Array.from(set);
 
+  localStorage.setItem(LS_KEY, JSON.stringify(arr));
+
+  window.dispatchEvent(
+    new CustomEvent('pw-completed-updated', {
+      detail: { completedIds: arr },
+    })
+  );
+}
 export default function PlannedWorkoutCard({
   workout,
   onClick,
@@ -48,13 +51,14 @@ export default function PlannedWorkoutCard({
   const [completedIds, setCompletedIds] = useState(() => readCompletedSet());
 
   // keep in sync across tabs/windows
-  useEffect(() => {
-    function onStorage(e) {
-      if (e.key === LS_KEY) setCompletedIds(readCompletedSet());
-    }
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+ useEffect(() => {
+  function handleUpdate(e) {
+    setCompletedIds(new Set(e.detail.completedIds));
+  }
+
+  window.addEventListener('pw-completed-updated', handleUpdate);
+  return () => window.removeEventListener('pw-completed-updated', handleUpdate);
+}, []);
 
   const isCompleted = useMemo(() => completedIds.has(workout.id), [completedIds, workout.id]);
 

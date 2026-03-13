@@ -11,6 +11,10 @@ import './WeekCalendar.css';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+
+import { useState } from 'react';
+import { today, startOfWeek } from '../domain/calendarHelpers.js';
+
 export default function WeekCalendar({
   weekAnchor,
   plannedWorkouts,
@@ -77,3 +81,4 @@ function buildWeekLabel(days) {
   const endStr   = `${sm !== em ? fmtMonth(ey, em) + ' ' : ''}${ed}, ${ey}`;
   return `${startStr} – ${endStr}`;
 }
+

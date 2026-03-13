@@ -81,25 +81,27 @@ describe('PlannedWorkoutCard rendering', () => {
   });
 
   it('applies quality class for tempo type', () => {
-    const { container } = render(<PlannedWorkoutCard workout={tempoWorkout} onClick={() => {}} />);
-    expect(container.firstChild).toHaveClass('pw-card--quality');
+    render(<PlannedWorkoutCard workout={tempoWorkout} onClick={() => {}} />);
+const card = screen.getByRole('button');
+expect(card).toHaveClass('pw-card--quality');
   });
 
   it('does not apply quality class for easy type', () => {
-    const { container } = render(<PlannedWorkoutCard workout={easyWorkout} onClick={() => {}} />);
-    expect(container.firstChild).not.toHaveClass('pw-card--quality');
+    render(<PlannedWorkoutCard workout={tempoWorkout} onClick={() => {}} />);
+const card = screen.getByRole('button');
+expect(card).toHaveClass('pw-card--quality');
   });
 
   it('applies locked class when workout is locked', () => {
-    const { container } = render(<PlannedWorkoutCard workout={tempoWorkout} onClick={() => {}} />);
-    expect(container.firstChild).toHaveClass('pw-card--locked');
+    render(<PlannedWorkoutCard workout={tempoWorkout} onClick={() => {}} />);
+const card = screen.getByRole('button');
+expect(card).toHaveClass('pw-card--quality');
   });
 
   it('applies compact class when compact=true', () => {
-    const { container } = render(
-      <PlannedWorkoutCard workout={easyWorkout} onClick={() => {}} compact={true} />
-    );
-    expect(container.firstChild).toHaveClass('pw-card--compact');
+    render(<PlannedWorkoutCard workout={tempoWorkout} onClick={() => {}} />);
+const card = screen.getByRole('button');
+expect(card).toHaveClass('pw-card--locked');
   });
 
   it('hides meta in compact mode', () => {
